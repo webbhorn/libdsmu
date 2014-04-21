@@ -1,4 +1,4 @@
 libudsm
 =======
 
-Distributed Shared Memory Library for Linux Applications
+Distributed Shared Memory in Userspace Library for Linux Applications
