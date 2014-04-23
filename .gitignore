@@ -10,3 +10,6 @@
 *.lai
 *.la
 *.a
+
+# I use a Mac
+.DS_Store
