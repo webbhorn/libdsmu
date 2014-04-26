@@ -13,6 +13,9 @@ static int handler(void *fault_address, int serious) {
   return sigsegv_dispatch(&dispatcher, fault_address);
 }
 
+// Should figure out what type of fault was called (HOW!?), do communication
+// with manager / other nodes, put new data in address, and set new
+// permissions. Then return to user.
 static int area_handler(void *fault_address, void *user_arg) {
     unsigned long area = *(unsigned long *)user_arg;
 
@@ -25,6 +28,8 @@ static int area_handler(void *fault_address, void *user_arg) {
     return 0;
 }
 
+// Should listen on network for "invalidate" messages, and invalidate the
+// address when it receives them.
 void *invaliatorf(void *ptr) {
     printf("here i am...\n");
     return 0;
