@@ -8,22 +8,30 @@
 #define TRAPNO_PAGE_FAULT 14
 #define REG_ERR 19
 
-static struct sigaction signext;
+static struct sigaction oldact;
 
 void pf_sighandler(int sig, siginfo_t *info, ucontext_t *ctx) {
+
   if (sig == SIGSEGV) {
     printf("Got signal %d, fault_loc is %p\n", sig, info->si_addr);
     printf("%llu\n", ctx->uc_mcontext.gregs[19]);
+
     if (ctx->uc_mcontext.gregs[REG_ERR] & 0x2) {
       printf("WRITE FAULT!\n");
     } else {
       printf("READ FAULT!\n");
     }
-  } else {
-    printf("Got signal %d\n", sig);
+
+    // Fix cause of fault (let read and write).
+    if (info->si_addr == (void *)0x12340990) {
+      if (mprotect((void *)0x12340000, 0x4000, (PROT_READ|PROT_WRITE)) == 0) {
+	return;
+      }
+    }
   }
 
-  exit(0);
+  printf("reverting to old handler\n");
+  (oldact.sa_handler)(sig);
 }
 
 int main(void) {
@@ -33,7 +41,7 @@ int main(void) {
   sa.sa_sigaction = (void *)pf_sighandler;
   sigemptyset(&sa.sa_mask);
   sa.sa_flags = SA_SIGINFO;
-  if (sigaction(SIGSEGV, &sa, &signext) != 0) {
+  if (sigaction(SIGSEGV, &sa, &oldact) != 0) {
     fprintf(stderr, "sigaction failed\n");
   }
 
@@ -52,6 +60,12 @@ int main(void) {
   printf("Will try to read %p\n", ((volatile int *)p) + 612);
   ((volatile int *)p)[612] = 3;
   //printf("%d\n", ((volatile int *)p)[612]);
+
+
+  // Dereference (void*)0 (null pointer) -- should give a real segfault.
+  int *f = 0;
+  //printf("f: %d\n", *f);
+  *f = 10;
 
   printf("we done.\n");
 
