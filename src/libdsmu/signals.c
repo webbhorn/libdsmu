@@ -1,44 +1,99 @@
 #include <fcntl.h>
 #include <signal.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <ucontext.h>
 
-#define TRAPNO_PAGE_FAULT 14
 #define REG_ERR 19
+#define PG_WRITE 0x2
+#define PG_PRESENT 0x1
+#define PG_SIZE 4096
 
 static struct sigaction oldact;
 
-void pf_sighandler(int sig, siginfo_t *info, ucontext_t *ctx) {
+int writehandler(void *pg);
+int readhandler(void *pg);
 
-  if (sig == SIGSEGV) {
-    printf("Got signal %d, fault_loc is %p\n", sig, info->si_addr);
-    printf("%llu\n", ctx->uc_mcontext.gregs[19]);
+// Convert address to the start of the page.
+static inline uintptr_t PGADDR(uintptr_t addr) {
+  return addr & ~(PG_SIZE - 1);
+}
 
-    if (ctx->uc_mcontext.gregs[REG_ERR] & 0x2) {
-      printf("WRITE FAULT!\n");
-    } else {
-      printf("READ FAULT!\n");
+// Intercept a pagefault for pages that are:
+// Any other faults should be forwarded to the default handler.
+void pgfaultsh(int sig, siginfo_t *info, ucontext_t *ctx) {
+  void *pgaddr;
+
+  // Ignore signals that are not segfaults.
+  if (sig != SIGSEGV) {
+    printf("signal is not a segfault... ignoring.\n");
+    printf("reverting to old handler\n");
+    (oldact.sa_handler)(sig);
+  }
+
+  // Only handle faults on the heap (or a special area).
+  if (! ((info->si_addr >= (void *)0x12340000) &&
+	 (info->si_addr < (void *)(0x12340000 + 4000)))) {
+    printf("segfault was not on heap... ignoring.\n");
+    printf("reverting to old handler\n");
+    (oldact.sa_handler)(sig);
+  }
+
+  // Dispatch fault to a read or write handler.
+  pgaddr = (void *)PGADDR((uintptr_t) info->si_addr);
+  if (ctx->uc_mcontext.gregs[REG_ERR] & PG_WRITE) {
+    if (writehandler(pgaddr) < 0) {
+      fprintf(stderr, "writehandler failed\n");
+      exit(1);
     }
-
-    // Fix cause of fault (let read and write).
-    if (info->si_addr == (void *)0x12340990) {
-      if (mprotect((void *)0x12340000, 0x4000, (PROT_READ|PROT_WRITE)) == 0) {
-	return;
-      }
+  } else {
+    if (readhandler(pgaddr) < 0) {
+      fprintf(stderr, "readhandler failed\n");
+      exit(1);
     }
   }
 
-  printf("reverting to old handler\n");
-  (oldact.sa_handler)(sig);
+  printf("page fault handled successfully.\n");
+  return;
 }
 
+// Connect to manager, etc.
+// pg should be page-aligned.
+// For now, just change permissions to R+W.
+// Return 0 on success.
+int writehandler(void *pg) {
+  printf("Entering writehandler...\n");
+  if (mprotect(pg, PG_SIZE, (PROT_READ|PROT_WRITE)) == 0) {
+    return 0;
+  }
+  return -1;
+}
+
+// Connect to manager, etc.
+// pg should be page-aligned.
+// For now, just change permissions to R-.
+// Return 0 on success.
+int readhandler(void *pg) {
+  printf("Entering readhandler...\n");
+  if (mprotect(pg, PG_SIZE, PROT_READ) == 0) {
+    return 0;
+  }
+  return -1;
+}
+
+// Test the page fault handler.
+// Register the handler, setup a non-readable, non-writeable memory region.
+// Try to read from it -- expect handler to run and make it readable.
+// Try to write from it -- expect handler to run and make it writeable.
+// Try to derefence NULL pointer -- expect handler to forward segfault to the
+// default handler, which should terminate the program.
 int main(void) {
   struct sigaction sa;
 
   // Register page fault handler.
-  sa.sa_sigaction = (void *)pf_sighandler;
+  sa.sa_sigaction = (void *)pgfaultsh;
   sigemptyset(&sa.sa_mask);
   sa.sa_flags = SA_SIGINFO;
   if (sigaction(SIGSEGV, &sa, &oldact) != 0) {
@@ -56,19 +111,18 @@ int main(void) {
     printf("mmap succeeded.\n");
   }
 
-  // Trigger a page fault.
-  printf("Will try to read %p\n", ((volatile int *)p) + 612);
-  ((volatile int *)p)[612] = 3;
-  //printf("%d\n", ((volatile int *)p)[612]);
+  // Trigger a read fault, then a write fault.
+  printf("Will try to read %p\n", ((int *)p) + 612);
+  printf("p[612] is %d\n", ((int *)p)[612]);
+  ((int *)p)[612] = 3;
+  printf("p[612] is now %d\n", ((int *)p)[612]);
 
 
-  // Dereference (void*)0 (null pointer) -- should give a real segfault.
+  // Dereference null pointer -- should give a real segfault.
   int *f = 0;
-  //printf("f: %d\n", *f);
-  *f = 10;
+  printf("f: %d\n", *f);
 
-  printf("we done.\n");
-
+  // Unreachable...
   return 0;
 }
 
