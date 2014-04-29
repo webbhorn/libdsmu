@@ -60,28 +60,24 @@ int main(int argc, char *argv[]) {
         printf("Error accepting new connection, quitting...\n");
         return 4;
     }
-
-    while (1) {
-        memset(&inputBuf, '0', sizeof(inputBuf));
-		    
-        // Receive a message from the client.
-        ssize_t n = recv(clientfd, &inputBuf, BUFLEN-1, 0);     // 0 parameter is flags for recv, can send signals this way.
-        if (n < 0) {
-            printf("Error reading client message, quitting...");
-            return 5;
-        }
-
-        // Print that message to standard out. (This will be null terminated.)
-        printf("Message from the client: %s\n", inputBuf);
-        
-        // Send a dummy message to the client.
-        //n = send(clientfd, "I got your message\n", 19, 0);
-        //if (n < 0) {
-        //    printf("Error writing message to client, quitting...\n");
-        //    return 6;
-        //}    
+    
+    // Receive a message from the client.
+    ssize_t n = recv(clientfd, &inputBuf, BUFLEN-1, 0);     // 0 parameter is flags for recv, can send signals this way.
+    if (n < 0) {
+        printf("Error reading client message, quitting...");
+        return 5;
     }
 
+    // Print that message to standard out. (This will be null terminated.)
+    printf("Message from the client: %s\n", inputBuf);
+    
+    // Send a dummy message to the client.
+    n = send(clientfd, "I got your message\n", 19, 0);
+    if (n < 0) {
+        printf("Error writing message to client, quitting...\n");
+        return 6;
+    }
+    
     // Close opened sockets before terminating.
     close(clientfd);
     close(serverfd);
