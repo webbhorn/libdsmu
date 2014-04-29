@@ -1,10 +1,15 @@
+#include "b64/cencode.h"
+
 #include <fcntl.h>
+#include <netdb.h>
 #include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/mman.h>
 #include <ucontext.h>
+#include <unistd.h>
 
 #define REG_ERR 19
 #define PG_WRITE 0x2
@@ -66,6 +71,35 @@ void pgfaultsh(int sig, siginfo_t *info, ucontext_t *ctx) {
 int writehandler(void *pg) {
   printf("Entering writehandler...\n");
   if (mprotect(pg, PG_SIZE, (PROT_READ|PROT_WRITE)) == 0) {
+    
+    struct addrinfo *resolvedAddr;
+    struct addrinfo hints;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = AI_PASSIVE;
+    if (getaddrinfo(NULL, "4444", &hints, &resolvedAddr) < 0)
+      return -2;
+    int serverfd = socket(resolvedAddr->ai_family, resolvedAddr->ai_socktype, resolvedAddr->ai_protocol);
+    if (serverfd < 0)
+      return -2;
+    if (connect(serverfd, resolvedAddr->ai_addr, resolvedAddr->ai_addrlen) < 0)
+      return -2;
+
+    char pgb64[PG_SIZE * 2] = {0};
+    base64_encodestate s;
+    base64_init_encodestate(&s);
+    size_t cnt = base64_encode_block((const char *)pg, PG_SIZE, pgb64, &s);
+    cnt += base64_encode_blockend(pgb64 + cnt, &s);
+
+    char msg[PG_SIZE * 3];
+    snprintf(msg, PG_SIZE * 3, "READ FAULT AT %p, %s", pg, pgb64);
+    if (send(serverfd, msg, sizeof(msg), 0) < 0)
+      return -3;
+
+    close(serverfd);
+    printf("done talking to server\n");
+
     return 0;
   }
   return -1;
