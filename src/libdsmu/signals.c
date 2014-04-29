@@ -64,6 +64,9 @@ void pgfaultsh(int sig, siginfo_t *info, ucontext_t *ctx) {
   return;
 }
 
+void msgmanager(char *msg) {
+}
+
 // Connect to manager, etc.
 // pg should be page-aligned.
 // For now, just change permissions to R+W.
@@ -94,7 +97,7 @@ int writehandler(void *pg) {
 
     char msg[PG_SIZE * 3];
     snprintf(msg, PG_SIZE * 3, "READ FAULT AT %p, %s", pg, pgb64);
-    if (send(serverfd, msg, sizeof(msg), 0) < 0)
+    if (send(serverfd, msg, strlen(msg), 0) < 0)
       return -3;
 
     close(serverfd);
