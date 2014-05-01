@@ -14,9 +14,12 @@ class PageTableEntry:
     self.readers = []
     self.owner = None # last processor to have write access
     self.current_permission = NONE
+    self.invalidate_confirmations = {}
+    self.send_page_confirmation = False
 
 class ManagerServer:
   def __init__(self, port, numPages):
+    self.global_lock = Lock()
     self.port = port
     self.clients = {} # client ids => ip addresses
     self.page_table_entries = [PageTableEntry() for i in range(numPages)]
@@ -28,29 +31,65 @@ class ManagerServer:
     # pass requests along to correct method in a new thread
     # serve Add/Remove clients requests
     # serve RequestPage requests
+    # receive invalidate/sendpage confirmations
+    # Call appropriate method in a new thread
     while True:
+      # TODO
       pass
 
   def AddClient(self, client, address):
+    self.global_lock.Acquire()
     self.clients[client] = address
+    self.global_lock.Release()
 
   def RemoveClient(self, client):
+    self.global_lock.Acquire()
     del self.clients[client]
+    self.global_lock.Release()
 
   def Invalidate(self, pagenumber):
     # Helper method
     # Tell clients using the page to invalidate, wait for confirmation
+    page_table_entry = self.page_table_entries[pagenumber]
+    page_table_entry.invalidate_confirmations = {}
+
+    # TODO
+
+    # Send invalidations to everyone (all readers + owner)
+
+    # Use dictionary above to check which ones didn't confirm, request again
+
+    # When all have confirmed, return
+
     pass
+
+  def InvalidateConfirmation(self, client, pagenumber):
+    # Alert invalidate thread
+    page_table_entry = self.page_table_entries[pagenumber]
+    page_table_entry.invalidate_confirmations[client] = True
 
   def SendPage(self, receiver, pagenumber):
     # Helper Method
     # Get page from owner
     # And send it to the requesting client
     # Wait for confirmation
+    page_table_entry = self.page_table_entries[pagenumber]
+    page_table_entry.send_page_confirmation = False
+
+    # TODO
+
     pass
+
+  def SPConfirmation(self, pagenumber):
+    # Alert send page thread
+    page_table_entry = self.page_table_entries[pagenumber]
+    page_table_entry.send_page_confirmation = True
 
   def SendConfirmation(self, client, permission):
     # Sends read/write permission to client letting them know they may proceed
+
+    # TODO
+
     pass
 
   def RequestPage(self, client, pagenumber, permission):
