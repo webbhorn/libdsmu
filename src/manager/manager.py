@@ -1,4 +1,7 @@
-import Lock from thread
+from threading import Lock
+
+PORT = 4444
+NUMPAGES = 100
 
 # PERMISSION TYPES
 NONE = 0
@@ -9,7 +12,7 @@ class PageTableEntry:
   def __init__(self):
     self.lock = Lock()
     self.readers = []
-    self.owner # last processor to have write access
+    self.owner = None # last processor to have write access
     self.current_permission = NONE
 
 class ManagerServer:
@@ -91,5 +94,5 @@ class ManagerServer:
 
 
 if __name__ == "__main__":
-  manager = ManagerServer(4444)
+  manager = ManagerServer(PORT, NUMPAGES)
   manager.Listen()
