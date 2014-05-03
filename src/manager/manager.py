@@ -1,6 +1,8 @@
+import os
 import socket
 from threading import Lock
 from threading import Thread
+import time
 
 PORT = 4444
 NUMPAGES = 100
@@ -61,6 +63,8 @@ class ManagerServer:
     # running in a new thread, handle the client
     idNum = idParam
     clientSocket.send("Welcome to the manager!!!!!")
+    time.sleep(3)
+    clientSocket.send("INVALIDATE AT 12340000 LEN 4096");
     while True:
       data = clientSocket.recv(7000) # Receive simple data, 4096 bytes here
       if not data:
@@ -163,5 +167,9 @@ class ManagerServer:
 
 
 if __name__ == "__main__":
-  manager = ManagerServer(PORT, NUMPAGES)
-  manager.Listen()
+  try:
+    manager = ManagerServer(PORT, NUMPAGES)
+    manager.Listen()
+  except KeyboardInterrupt:
+    os._exit(0)
+

@@ -139,14 +139,27 @@ int teardownsocks(void) {
   close(serverfd);
 }
 
+// Handle invalidate messages.
+void invalidate(char *msg) {
+  char *saddr = strstr(msg, "AT") + 3;
+  char *slen = strstr(msg, "LEN") + 4;
+  printf("Invalidate address %s for %s bytes\n", saddr, slen);
+}
+
+// Handle newly arrived messages.
+void dispatch(char *msg) {
+  if (strstr(msg, "INVALIDATE") != NULL) {
+    invalidate(msg);
+  }
+}
+
 // Listen for manager messages and dispatch them.
 void *listenman(void *ptr) {
   printf("Listening...\n");
   while (1) {
     char buf[7000] = {0};
     ssize_t err = recv(serverfd, (void *)buf, 7000, 0);
-    printf("LISTENER RECEIVED MESSAGE:\n");
-    printf("%s\n\n", buf);
+    dispatch(buf);
   }
 }
 
