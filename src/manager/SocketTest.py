@@ -1,4 +1,5 @@
 import socket
+import time
 from threading import Thread
 
 PORT = 4445
@@ -38,6 +39,9 @@ class TestServer:
     def HandleClient(self, clientSocket, idParam):
         # running in a new thread, handle the client
         idNum = idParam
+        time.sleep(3)
+        clientSocket.send("INVALIDATE 1234000")
+
         while True:
             data = clientSocket.recv(4096) # Receive simple data, 4096 bytes here
             print "[HandleClient id " + str(idNum) + "] " + data # Print it out
