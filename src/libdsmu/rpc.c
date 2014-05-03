@@ -17,6 +17,24 @@ int serverfd;
 struct addrinfo *resolvedAddr;
 struct addrinfo hints;
 
+// Listen for manager messages and dispatch them.
+void *listenman(void *ptr) {
+  printf("Listening...\n");
+  while (1) {
+    char buf[7000] = {0};
+    recv(serverfd, (void *)buf, 7000, 0);
+    dispatch(buf);
+  }
+}
+
+// Handle newly arrived messages.
+int dispatch(char *msg) {
+  if (strstr(msg, "INVALIDATE") != NULL) {
+    invalidate(msg);
+  }
+  return 0;
+}
+
 // Send a message to the manager.
 int sendman(char *str, int len) {
   // Acquire manager socket lock.
@@ -63,9 +81,6 @@ void confirminvalidate_encoded(int pgnum, char *pgb64) {
 }
 
 // Handle invalidate messages.
-// TODO: Hold a lock so that a write-fault won't randomly start writing here.
-// BUT: The write-fault handler should release the lock immediately after it's
-// done setting the page to writeable.
 int invalidate(char *msg) {
   int err;
   char *spgnum = strstr(msg, " ") + 1;
@@ -90,7 +105,8 @@ int invalidate(char *msg) {
 
   // We need to reply with a b64-encoding of the page. Set to read-only, encode
   // the page, set to non-readable, non-writeable, and confirm with the
-  // encoding. We need to hold a lock to prevent the page from becoming
+  // encoding.
+  // TODO: We need to hold a lock to prevent the page from becoming
   // writeable while we are encoding it. (Do we?)
   printf("invalidation needs a b64-encoding of the page\n");
   if (mprotect(pg, 1, PROT_READ) != 0) {
@@ -110,21 +126,4 @@ int invalidate(char *msg) {
   return 0;
 }
 
-// Handle newly arrived messages.
-int dispatch(char *msg) {
-  if (strstr(msg, "INVALIDATE") != NULL) {
-    invalidate(msg);
-  }
-  return 0;
-}
-
-// Listen for manager messages and dispatch them.
-void *listenman(void *ptr) {
-  printf("Listening...\n");
-  while (1) {
-    char buf[7000] = {0};
-    recv(serverfd, (void *)buf, 7000, 0);
-    dispatch(buf);
-  }
-}
 
