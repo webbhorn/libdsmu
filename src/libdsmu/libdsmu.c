@@ -1,5 +1,4 @@
 #include <fcntl.h>
-#include <netdb.h>
 #include <pthread.h>
 #include <signal.h>
 #include <stdint.h>
@@ -8,12 +7,11 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <ucontext.h>
-#include <unistd.h>
 
-#include "libdsmu.h"
-#include "rpc.h"
-#include "mem.h"
 #include "b64.h"
+#include "libdsmu.h"
+#include "mem.h"
+#include "rpc.h"
 
 // Signal handler state.
 static struct sigaction oldact;
