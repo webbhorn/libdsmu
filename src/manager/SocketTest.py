@@ -1,3 +1,4 @@
+import os
 import socket
 import time
 from threading import Thread
@@ -40,13 +41,16 @@ class TestServer:
         # running in a new thread, handle the client
         idNum = idParam
         time.sleep(3)
-        clientSocket.send("INVALIDATE 1234000")
-
+        clientSocket.send("INVALIDATE 74560 PAGEDATA")
         while True:
             data = clientSocket.recv(4096) # Receive simple data, 4096 bytes here
             print "[HandleClient id " + str(idNum) + "] " + data # Print it out
 
-
 if __name__ == "__main__":
-    server = TestServer(PORT)
-    server.Listen()
+  try:
+    manager = TestServer(PORT)
+    manager.Listen()
+  except KeyboardInterrupt:
+    manager.serverSocket.close()
+    os._exit(0)
+

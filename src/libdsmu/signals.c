@@ -134,7 +134,7 @@ int initsocks(void) {
   hints.ai_family = AF_INET;
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_flags = AI_PASSIVE;
-  if (getaddrinfo(NULL, "4444", &hints, &resolvedAddr) < 0)
+  if (getaddrinfo(NULL, "4445", &hints, &resolvedAddr) < 0)
     return -2;
 
   serverfd = socket(resolvedAddr->ai_family, resolvedAddr->ai_socktype,
@@ -157,18 +157,57 @@ void confirminvalidate(int pgnum) {
   sendman(msg, strlen(msg));
 }
 
+void confirminvalidate_encoded(int pgnum, char *pgb64) {
+  char msg[10000] = {0};
+  snprintf(msg, 100 + strlen(pgb64), "INVALIDATE CONFIRMATION %d %s", pgnum, pgb64);
+  sendman(msg, strlen(msg));
+}
+
 // Handle invalidate messages.
+// TODO: Hold a lock so that a write-fault won't randomly start writing here.
+// BUT: The write-fault handler should release the lock immediately after it's
+// done setting the page to writeable.
 int invalidate(char *msg) {
-  char *spgnum = strtok(msg, " ");
+  int err;
+  char *spgnum = strstr(msg, " ") + 1;
+  printf("PAGE NUMBER STRING: %s\n", spgnum);
   int pgnum = atoi(spgnum);
+  printf("ATOI RETURNED: %d\n", pgnum);
   printf(">> Invalidate page number %d\n", pgnum);
   void *pg = (void *)PGNUM_TO_PGADDR((uintptr_t)pgnum);
+
+  // If we don't need to reply with a b64-encoding of the page, just invalidate
+  // and reply.
+  if (strstr(msg, "PAGEDATA") == NULL) {
+    printf("invalidation does not need a b64-encoding of the page\n");
+    if ((err = mprotect(pg, 1, PROT_NONE)) != 0) {
+      fprintf(stderr, "Invalidation of page addr %p failed with error %d\n", pg, err);
+      return -1;
+    }
+    printf("Successfully invalidated page at addr %p\n", pg);
+    confirminvalidate(pgnum);
+    return 0;
+  }
+
+  // We need to reply with a b64-encoding of the page. Set to read-only, encode
+  // the page, set to non-readable, non-writeable, and confirm with the
+  // encoding. We need to hold a lock to prevent the page from becoming
+  // writeable while we are encoding it. (Do we?)
+  printf("invalidation needs a b64-encoding of the page\n");
+  if (mprotect(pg, 1, PROT_READ) != 0) {
+    fprintf(stderr, "Invalidation of page addr %p failed\n", pg);
+    return -1;
+  }
+  printf("page is read-only\n");
+  char pgb64[PG_SIZE * 2] = {0};
+  int errcnt = b64encode((const char *)pg, PG_SIZE, pgb64);
+  printf("page is b64-encoded\n");
   if (mprotect(pg, 1, PROT_NONE) != 0) {
     fprintf(stderr, "Invalidation of page addr %p failed\n", pg);
     return -1;
   }
-  printf("Successfully invalidated page at addr %p\n", pg);
-  confirminvalidate(pgnum);
+  printf("page is unreadable, unwriteable\n");
+  confirminvalidate_encoded(pgnum, pgb64);
   return 0;
 }
 
@@ -218,7 +257,7 @@ int main(void) {
 
   // Setup test memory area.
   int zero_fd = open("/dev/zero", O_RDONLY, 0644);
-  void *p = mmap((void *)0x12340000, 0x4000, (PROT_NONE),
+  void *p = mmap((void *)0x12340000, 0x4000, (PROT_READ|PROT_WRITE),
                  (MAP_ANON|MAP_PRIVATE), zero_fd, 0);
   if (p < 0) {
     fprintf(stderr, "mmap failed.\n");
@@ -227,11 +266,13 @@ int main(void) {
     printf("mmap succeeded.\n");
   }
 
+  /*
   // Trigger a read fault, then a write fault.
   printf("Will try to read %p\n", ((int *)p) + 612);
   printf("p[612] is %d\n", ((int *)p)[612]);
   ((int *)p)[612] = 3;
   printf("p[612] is now %d\n", ((int *)p)[612]);
+  */
 
   pthread_join(tlisten, NULL);
 
