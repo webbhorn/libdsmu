@@ -15,7 +15,8 @@
 #define REG_ERR 19
 #define PG_WRITE 0x2
 #define PG_PRESENT 0x1
-#define PG_SIZE 4096
+#define PG_BITS 12
+#define PG_SIZE (1 << (PG_BITS))
 
 // Signal handler state.
 static struct sigaction oldact;
@@ -32,6 +33,11 @@ struct addrinfo hints;
 // Convert address to the start of the page.
 static inline uintptr_t PGADDR(uintptr_t addr) {
   return addr & ~(PG_SIZE - 1);
+}
+
+// Convert page number to address of start of page.
+static inline uintptr_t PGNUM_TO_PGADDR(uintptr_t pgnum) {
+  return pgnum << PG_BITS;
 }
 
 // Intercept a pagefault for pages that are:
@@ -82,6 +88,12 @@ int b64encode(const char *starta, unsigned int sz, char *outbuf) {
   return cnt;
 }
 
+// Send a message to the manager.
+int sendman(char *str, int len) {
+  // Acquire manager socket lock.
+  return send(serverfd, str, len, 0);
+}
+
 // Connect to manager, etc.
 // pg should be page-aligned.
 // For now, just change permissions to R+W.
@@ -94,7 +106,7 @@ int writehandler(void *pg) {
 
     char msg[PG_SIZE * 2];
     snprintf(msg, PG_SIZE * 3, "READ FAULT AT %p, %s", pg, pgb64);
-    if (send(serverfd, msg, strlen(msg), 0) < 0)
+    if (sendman(msg, strlen(msg)) < 0)
       return -3;
     printf("done talking to server\n");
 
@@ -139,15 +151,29 @@ int teardownsocks(void) {
   close(serverfd);
 }
 
+void confirminvalidate(int pgnum) {
+  char msg[100] = {0};
+  snprintf(msg, 100, "INVALIDATE CONFIRMATION %d", pgnum);
+  sendman(msg, strlen(msg));
+}
+
 // Handle invalidate messages.
-void invalidate(char *msg) {
-  char *saddr = strstr(msg, "AT") + 3;
-  char *slen = strstr(msg, "LEN") + 4;
-  printf("Invalidate address %s for %s bytes\n", saddr, slen);
+int invalidate(char *msg) {
+  char *spgnum = strtok(msg, " ");
+  int pgnum = atoi(spgnum);
+  printf(">> Invalidate page number %d\n", pgnum);
+  void *pg = (void *)PGNUM_TO_PGADDR((uintptr_t)pgnum);
+  if (mprotect(pg, 1, PROT_NONE) != 0) {
+    fprintf(stderr, "Invalidation of page addr %p failed\n", pg);
+    return -1;
+  }
+  printf("Successfully invalidated page at addr %p\n", pg);
+  confirminvalidate(pgnum);
+  return 0;
 }
 
 // Handle newly arrived messages.
-void dispatch(char *msg) {
+int dispatch(char *msg) {
   if (strstr(msg, "INVALIDATE") != NULL) {
     invalidate(msg);
   }
