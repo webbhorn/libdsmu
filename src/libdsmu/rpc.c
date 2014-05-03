@@ -1,16 +1,16 @@
+#include <fcntl.h>
 #include <netdb.h>
 #include <pthread.h>
 #include <stdint.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <fcntl.h>
-#include <sys/mman.h>
-#include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/mman.h>
+#include <unistd.h>
 
+#include "b64.h"
 #include "mem.h"
 #include "rpc.h"
-#include "b64.h"
 
 // Socket state.
 int serverfd;
@@ -34,7 +34,7 @@ int initsocks(void) {
     return -2;
 
   serverfd = socket(resolvedAddr->ai_family, resolvedAddr->ai_socktype,
-                        resolvedAddr->ai_protocol);
+                    resolvedAddr->ai_protocol);
   if (serverfd < 0)
     return -2;
 
