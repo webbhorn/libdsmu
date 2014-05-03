@@ -26,3 +26,6 @@ clean:
 depend:
 	$(SRCS)
 	makedepend $(INCLUDES) $^
+
+# DO NOT DELETE THIS LINE -- make depend needs it
+
