@@ -1,6 +1,6 @@
 CC = gcc
-CFLAGS = -Wall
-INCLUDES = -I.
+INCLUDES = -I../include
+CFLAGS = -Wall $(INCLUDES)
 LFLAGS =
 LIBS = -lb64 -lpthread
 
@@ -15,13 +15,13 @@ all: $(MAIN)
 	@echo Build complete.
 
 $(MAIN): $(OBJS)
-	$(CC) $(CFLAGS) $(INCLUDES) -o $(MAIN) $(OBJS) $(LFLAGS) $(LIBS)
+	$(CC) $(CFLAGS) -o $(MAIN) $(OBJS) $(LFLAGS) $(LIBS)
 
 .c: .o
-	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	$(RM) *.o *~ $(MAIN)
+	$(RM) *.o *~
 
 depend:
 	$(SRCS)
