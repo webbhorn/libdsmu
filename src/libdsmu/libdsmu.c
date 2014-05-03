@@ -12,33 +12,15 @@
 #include <ucontext.h>
 #include <unistd.h>
 
-#define REG_ERR 19
-#define PG_WRITE 0x2
-#define PG_PRESENT 0x1
-#define PG_BITS 12
-#define PG_SIZE (1 << (PG_BITS))
+#include "libdsmu.h"
 
 // Signal handler state.
 static struct sigaction oldact;
-
-// Function declarations.
-int writehandler(void *pg);
-int readhandler(void *pg);
 
 // Socket state.
 int serverfd;
 struct addrinfo *resolvedAddr;
 struct addrinfo hints;
-
-// Convert address to the start of the page.
-static inline uintptr_t PGADDR(uintptr_t addr) {
-  return addr & ~(PG_SIZE - 1);
-}
-
-// Convert page number to address of start of page.
-static inline uintptr_t PGNUM_TO_PGADDR(uintptr_t pgnum) {
-  return pgnum << PG_BITS;
-}
 
 // Intercept a pagefault for pages that are:
 // Any other faults should be forwarded to the default handler.
