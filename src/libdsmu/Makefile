@@ -1,16 +1,7 @@
-all: hellomake hellosignal serverdemo clientdemo
+all: libdsmu
 
-hellomake: main.c
-	gcc -o main main.c -lpthread -lsigsegv -I.
-
-hellosignal: signals.c
-	gcc -o signals signals.c -lb64 -lpthread
-
-serverdemo: server.c
-	gcc -o server server.c
-
-clientdemo: client.c
-	gcc -o client client.c
+libdsmu: libdsmu.c
+	gcc -o libdsmu libdsmu.c -lb64 -lpthread
 
 clean:
-	rm -rf *o main signals server client
+	rm -rf *o signals
