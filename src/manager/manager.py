@@ -3,28 +3,28 @@ import socket
 from threading import Lock
 from threading import Thread
 import time
+import operator
 
 PORT = 4444
 NUMPAGES = 100
 MAXCONNREQUESTS = 5
 
 # PERMISSION TYPES
-NONE = 0
-READ = 1
-WRITE = 2
+NONE = "NONE"
+READ = "READ"
+WRITE = "WRITE"
 
 class PageTableEntry:
   def __init__(self):
     self.lock = Lock()
-    self.readers = []
-    self.owner = None # last processor to have write access
+    self.users = []
     self.current_permission = NONE
+    self.cached_page = NONE
     self.invalidate_confirmations = {}
     self.send_page_confirmation = False
 
 class ManagerServer:
   def __init__(self, port, numPages):
-    self.global_lock = Lock()
     self.port = port
     self.clients = {} # client ids => ip addresses
     self.page_table_entries = [PageTableEntry() for i in range(numPages)]
@@ -49,8 +49,12 @@ class ManagerServer:
       # Here, we just make a new thread to handle this client and run it, and
       # get back to waiting for new clients.
       clientThread = Thread(target = self.HandleClient, args = (clientSocket,
-                            self.id, ))
+                            self.id))
       self.id += 1 # id used to uniquely identify print statements
+
+      client = clientSocket.getsockname()[1]
+      self.AddClient(client, clientSocket)
+
       clientThread.start()
 
 
@@ -59,72 +63,60 @@ class ManagerServer:
   # serve RequestPage requests
   # receive invalidate/sendpage confirmations
   # Call appropriate method in a new thread
-  def HandleClient(self, clientSocket, idParam):
+  def HandleClient(self, clientSocket):
     # running in a new thread, handle the client
-    idNum = idParam
-    clientSocket.send("Welcome to the manager!!!!!")
-    time.sleep(3)
-    clientSocket.send("INVALIDATE AT 12340000 LEN 4096");
+    client = clientSocket.getsockname()[1]
     while True:
       data = clientSocket.recv(7000) # Receive simple data, 4096 bytes here
-      if not data:
-        continue
-      print "[HandleClient id " + str(idNum) + "] " + data # Print it out
+      print "[Manager] " + data
+      thread = Thread(target = self.ProcessMessage, args = (client, data))
+      thread.start()
 
-  def AddClient(self, client, address):
-    self.global_lock.Acquire()
-    self.clients[client] = address
-    self.global_lock.Release()
 
-  def RemoveClient(self, client):
-    self.global_lock.Acquire()
-    del self.clients[client]
-    self.global_lock.Release()
+  def ProcessMessage(self, client, data):
+    args = data.split(" ")
 
-  def Invalidate(self, pagenumber):
+
+    if args[0] == "REQUESTPAGE":
+      self.RequestPage(client, args[2], args[1])
+    elif args[0] == "INVALIDATE":
+      b64_encoded_data = args[3] if len(args) > 3 else ""
+      self.InvalidateConfirmation(client, args[2], b64_encoded_data)
+    else:
+      print "FUCK BAD PROTOCOL"
+
+
+  def AddClient(self, client, socket):
+    self.clients[client] = socket
+
+  def Invalidate(self, client, pagenumber):
     # Helper method
     # Tell clients using the page to invalidate, wait for confirmation
     page_table_entry = self.page_table_entries[pagenumber]
     page_table_entry.invalidate_confirmations = {}
 
-    # TODO
+    for user in page_table_entry.users:
+      page_table_entry.invalidate_confirmations[user] = False
 
-    # Send invalidations to everyone (all readers + owner)
+    for user in page_table_entry.users:
+      self.clients[user].send("INVALIDATE " + pagenumber)
 
-    # Use dictionary above to check which ones didn't confirm, request again
+    finished = False
+
+    while not finished:
+      confs = [page_table_entry.invalidate_confirmations[user] for user in page_table_entry.users]
+      finished = reduce(operator.and_, confs, True)
 
     # When all have confirmed, return
 
-    pass
-
-  def InvalidateConfirmation(self, client, pagenumber):
+  def InvalidateConfirmation(self, client, pagenumber, data):
     # Alert invalidate thread
     page_table_entry = self.page_table_entries[pagenumber]
     page_table_entry.invalidate_confirmations[client] = True
 
-  def SendPage(self, receiver, pagenumber):
-    # Helper Method
-    # Get page from owner
-    # And send it to the requesting client
-    # Wait for confirmation
-    page_table_entry = self.page_table_entries[pagenumber]
-    page_table_entry.send_page_confirmation = False
-
-    # TODO
-
-    pass
-
-  def SPConfirmation(self, pagenumber):
-    # Alert send page thread
-    page_table_entry = self.page_table_entries[pagenumber]
-    page_table_entry.send_page_confirmation = True
-
-  def SendConfirmation(self, client, permission):
-    # Sends read/write permission to client letting them know they may proceed
-
-    # TODO
-
-    pass
+  def SendConfirmation(self, client, pagenumber):
+    socket = self.clients[client]
+    socket.send("REQUESTPAGE CONFIRMATION " + pagenumber)
 
   def RequestPage(self, client, pagenumber, permission):
     # Invalidate page with other clients (if necessary)
@@ -135,11 +127,11 @@ class ManagerServer:
     # Initial use of page FAULT HANDLER
     if page_table_entry.current_permission == NONE:
       page_table_entry.current_permission = permission
-      page_table_entry.owner = client
-      self.SendConfirmation(client, permission)
+      page_table_entry.users.add(client)
+      self.SendConfirmation(client, pagenumber)
       
       if permission == READ:
-        page_table_entry.readers = [client]
+        page_table_entry.users= [client]
 
       page_table_entry.lock.Relase()
       return
@@ -147,24 +139,20 @@ class ManagerServer:
     # READ FAULT HANDLER
     if permission == READ:
       if page_table_entry.current_permission == WRITE:
-        self.Invalidate(pagenumber)
-        self.SendPage(client, permission)
-        page_table_entry.readers = [client]
+        self.Invalidate(client, pagenumber)
+        page_table_entry.users = [client]
       else:
-        page_table_entry.readers += client
+        page_table_entry.users += client
+        # send cached page
 
     # WRITE FAULT HANDLER
     if permission == WRITE:
-      self.Invalidate(pagenumber)
-      self.SendPage(client, permission)
-      page_table_entry.readers = []
-      page_table_entry.owner = client
+      self.Invalidate(client, pagenumber)
+      page_table_entry.users = [client]
 
-    self.SendConfirmation(client, permission)
+    self.SendConfirmation(client, pagenumber)
     page_table_entry.current_permission = permission
     page_table_entry.lock.Release()
-    return
-
 
 if __name__ == "__main__":
   try:
