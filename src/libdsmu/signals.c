@@ -2,6 +2,7 @@
 
 #include <fcntl.h>
 #include <netdb.h>
+#include <pthread.h>
 #include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -123,10 +124,12 @@ int initsocks(void) {
   hints.ai_flags = AI_PASSIVE;
   if (getaddrinfo(NULL, "4444", &hints, &resolvedAddr) < 0)
     return -2;
+
   serverfd = socket(resolvedAddr->ai_family, resolvedAddr->ai_socktype,
                         resolvedAddr->ai_protocol);
   if (serverfd < 0)
     return -2;
+
   if (connect(serverfd, resolvedAddr->ai_addr, resolvedAddr->ai_addrlen) < 0)
     return -2;
 }
@@ -134,6 +137,17 @@ int initsocks(void) {
 // Cleanup sockets.
 int teardownsocks(void) {
   close(serverfd);
+}
+
+// Listen for manager messages and dispatch them.
+void *listenman(void *ptr) {
+  printf("Listening...\n");
+  while (1) {
+    char buf[7000] = {0};
+    ssize_t err = recv(serverfd, (void *)buf, 7000, 0);
+    printf("LISTENER RECEIVED MESSAGE:\n");
+    printf("%s\n\n", buf);
+  }
 }
 
 // Test the page fault handler.
@@ -156,6 +170,13 @@ int main(void) {
   // Setup sockets.
   initsocks();
 
+  // Spin up thread that listens for messages from manager.
+  pthread_t tlisten;
+  if ((pthread_create(&tlisten, NULL, listenman, NULL) != 0)) {
+    printf("failed to spawn listener thread\n");
+    return -1;
+  }
+
   // Setup test memory area.
   int zero_fd = open("/dev/zero", O_RDONLY, 0644);
   void *p = mmap((void *)0x12340000, 0x4000, (PROT_NONE),
@@ -173,6 +194,7 @@ int main(void) {
   ((int *)p)[612] = 3;
   printf("p[612] is now %d\n", ((int *)p)[612]);
 
+  pthread_join(tlisten, NULL);
 
   // Cleanup.
   teardownsocks();

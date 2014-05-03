@@ -52,7 +52,6 @@ class ManagerServer:
       clientThread.start()
 
 
-
   # pass requests along to correct method in a new thread
   # serve Add/Remove clients requests
   # serve RequestPage requests
@@ -61,6 +60,7 @@ class ManagerServer:
   def HandleClient(self, clientSocket, idParam):
     # running in a new thread, handle the client
     idNum = idParam
+    clientSocket.send("Welcome to the manager!!!!!")
     while True:
       data = clientSocket.recv(7000) # Receive simple data, 4096 bytes here
       if not data:

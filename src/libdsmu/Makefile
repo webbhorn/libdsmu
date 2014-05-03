@@ -4,7 +4,7 @@ hellomake: main.c
 	gcc -o main main.c -lpthread -lsigsegv -I.
 
 hellosignal: signals.c
-	gcc -o signals signals.c -lb64
+	gcc -o signals signals.c -lb64 -lpthread
 
 serverdemo: server.c
 	gcc -o server server.c
