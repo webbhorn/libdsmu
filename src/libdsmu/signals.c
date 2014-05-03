@@ -16,10 +16,17 @@
 #define PG_PRESENT 0x1
 #define PG_SIZE 4096
 
+// Signal handler state.
 static struct sigaction oldact;
 
+// Function declarations.
 int writehandler(void *pg);
 int readhandler(void *pg);
+
+// Socket state.
+int serverfd;
+struct addrinfo *resolvedAddr;
+struct addrinfo hints;
 
 // Convert address to the start of the page.
 static inline uintptr_t PGADDR(uintptr_t addr) {
@@ -64,7 +71,14 @@ void pgfaultsh(int sig, siginfo_t *info, ucontext_t *ctx) {
   return;
 }
 
-void msgmanager(char *msg) {
+// Encode a block of data in starta of length sz into a base64 string, stored
+// in outbuf.
+int b64encode(const char *starta, unsigned int sz, char *outbuf) {
+  base64_encodestate s;
+  base64_init_encodestate(&s);
+  int cnt = base64_encode_block(starta, sz, outbuf, &s);
+  cnt += base64_encode_blockend(outbuf + cnt, &s);
+  return cnt;
 }
 
 // Connect to manager, etc.
@@ -74,33 +88,13 @@ void msgmanager(char *msg) {
 int writehandler(void *pg) {
   printf("Entering writehandler...\n");
   if (mprotect(pg, PG_SIZE, (PROT_READ|PROT_WRITE)) == 0) {
-    
-    struct addrinfo *resolvedAddr;
-    struct addrinfo hints;
-    memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF_INET;
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_flags = AI_PASSIVE;
-    if (getaddrinfo(NULL, "4444", &hints, &resolvedAddr) < 0)
-      return -2;
-    int serverfd = socket(resolvedAddr->ai_family, resolvedAddr->ai_socktype, resolvedAddr->ai_protocol);
-    if (serverfd < 0)
-      return -2;
-    if (connect(serverfd, resolvedAddr->ai_addr, resolvedAddr->ai_addrlen) < 0)
-      return -2;
-
     char pgb64[PG_SIZE * 2] = {0};
-    base64_encodestate s;
-    base64_init_encodestate(&s);
-    size_t cnt = base64_encode_block((const char *)pg, PG_SIZE, pgb64, &s);
-    cnt += base64_encode_blockend(pgb64 + cnt, &s);
+    int errcnt = b64encode((const char *)pg, PG_SIZE, pgb64);
 
-    char msg[PG_SIZE * 3];
+    char msg[PG_SIZE * 2];
     snprintf(msg, PG_SIZE * 3, "READ FAULT AT %p, %s", pg, pgb64);
     if (send(serverfd, msg, strlen(msg), 0) < 0)
       return -3;
-
-    close(serverfd);
     printf("done talking to server\n");
 
     return 0;
@@ -120,6 +114,28 @@ int readhandler(void *pg) {
   return -1;
 }
 
+// Initialize socket with manager.
+// Return 0 on success.
+int initsocks(void) {
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_family = AF_INET;
+  hints.ai_socktype = SOCK_STREAM;
+  hints.ai_flags = AI_PASSIVE;
+  if (getaddrinfo(NULL, "4444", &hints, &resolvedAddr) < 0)
+    return -2;
+  serverfd = socket(resolvedAddr->ai_family, resolvedAddr->ai_socktype,
+                        resolvedAddr->ai_protocol);
+  if (serverfd < 0)
+    return -2;
+  if (connect(serverfd, resolvedAddr->ai_addr, resolvedAddr->ai_addrlen) < 0)
+    return -2;
+}
+
+// Cleanup sockets.
+int teardownsocks(void) {
+  close(serverfd);
+}
+
 // Test the page fault handler.
 // Register the handler, setup a non-readable, non-writeable memory region.
 // Try to read from it -- expect handler to run and make it readable.
@@ -136,6 +152,9 @@ int main(void) {
   if (sigaction(SIGSEGV, &sa, &oldact) != 0) {
     fprintf(stderr, "sigaction failed\n");
   }
+
+  // Setup sockets.
+  initsocks();
 
   // Setup test memory area.
   int zero_fd = open("/dev/zero", O_RDONLY, 0644);
@@ -155,11 +174,9 @@ int main(void) {
   printf("p[612] is now %d\n", ((int *)p)[612]);
 
 
-  // Dereference null pointer -- should give a real segfault.
-  int *f = 0;
-  printf("f: %d\n", *f);
+  // Cleanup.
+  teardownsocks();
 
-  // Unreachable...
   return 0;
 }
 
