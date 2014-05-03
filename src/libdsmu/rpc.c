@@ -40,11 +40,14 @@ int initsocks(void) {
 
   if (connect(serverfd, resolvedAddr->ai_addr, resolvedAddr->ai_addrlen) < 0)
     return -2;
+
+  return 0;
 }
 
 // Cleanup sockets.
 int teardownsocks(void) {
   close(serverfd);
+  return 0;
 }
 
 void confirminvalidate(int pgnum) {
@@ -96,7 +99,7 @@ int invalidate(char *msg) {
   }
   printf("page is read-only\n");
   char pgb64[PG_SIZE * 2] = {0};
-  int errcnt = b64encode((const char *)pg, PG_SIZE, pgb64);
+  b64encode((const char *)pg, PG_SIZE, pgb64);
   printf("page is b64-encoded\n");
   if (mprotect(pg, 1, PROT_NONE) != 0) {
     fprintf(stderr, "Invalidation of page addr %p failed\n", pg);
@@ -112,6 +115,7 @@ int dispatch(char *msg) {
   if (strstr(msg, "INVALIDATE") != NULL) {
     invalidate(msg);
   }
+  return 0;
 }
 
 // Listen for manager messages and dispatch them.
@@ -119,7 +123,7 @@ void *listenman(void *ptr) {
   printf("Listening...\n");
   while (1) {
     char buf[7000] = {0};
-    ssize_t err = recv(serverfd, (void *)buf, 7000, 0);
+    recv(serverfd, (void *)buf, 7000, 0);
     dispatch(buf);
   }
 }

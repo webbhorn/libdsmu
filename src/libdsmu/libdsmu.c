@@ -69,7 +69,7 @@ int writehandler(void *pg) {
   printf("Entering writehandler...\n");
   if (mprotect(pg, PG_SIZE, (PROT_READ|PROT_WRITE)) == 0) {
     char pgb64[PG_SIZE * 2] = {0};
-    int errcnt = b64encode((const char *)pg, PG_SIZE, pgb64);
+    b64encode((const char *)pg, PG_SIZE, pgb64);
 
     char msg[PG_SIZE * 2];
     snprintf(msg, PG_SIZE * 3, "READ FAULT AT %p, %s", pg, pgb64);

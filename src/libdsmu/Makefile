@@ -1,19 +1,28 @@
-all: main
+CC = gcc
+CFLAGS = -Wall
+INCLUDES = -I.
+LFLAGS =
+LIBS = -lb64 -lpthread
 
-main: libdsmu
-	gcc -c main.c -o main.o
-	gcc -o main main.o b64.o rpc.o libdsmu.o -lpthread -lb64 -I.
+SRCS = b64.c libdsmu.c main.c rpc.c
+OBJS = $(SRCS:.c=.o)
 
-libdsmu: rpc b64 mem libdsmu.c libdsmu.h
-	gcc -c libdsmu.c -o libdsmu.o -I.
+MAIN = main
 
-mem: mem.h
+.PHONY: depend clean
 
-b64: b64.h b64.c
-	gcc -c b64.c -o b64.o -I.
+all: $(MAIN)
+	@echo Build complete.
 
-rpc: b64 rpc.c rpc.h mem.h
-	gcc -c rpc.c -o rpc.o -I.
+$(MAIN): $(OBJS)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $(MAIN) $(OBJS) $(LFLAGS) $(LIBS)
+
+.c: .o
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
 clean:
-	rm -rf *o libdsmu
+	$(RM) *.o *~ $(MAIN)
+
+depend:
+	$(SRCS)
+	makedepend $(INCLUDES) $^
