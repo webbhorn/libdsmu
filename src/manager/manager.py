@@ -1,7 +1,10 @@
+import socket
 from threading import Lock
+from threading import Thread
 
 PORT = 4444
 NUMPAGES = 100
+MAXCONNREQUESTS = 5
 
 # PERMISSION TYPES
 NONE = 0
@@ -23,19 +26,46 @@ class ManagerServer:
     self.port = port
     self.clients = {} # client ids => ip addresses
     self.page_table_entries = [PageTableEntry() for i in range(numPages)]
+    self.serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    self.id = 0
 
   def Listen(self):
-    # start listening on port
+    self.serverSocket.bind(('localhost', self.port))
+    self.serverSocket.listen(MAXCONNREQUESTS)
+    # MAXCONNREQUESTS represents the number of outstanding clients waiting to
+    # interact with the server before clients are turned away. It is 5 because
+    # that is the normal default, but setting it to the # of clients is ok too.
     print "[Manager Server] Waiting..."
 
-    # pass requests along to correct method in a new thread
-    # serve Add/Remove clients requests
-    # serve RequestPage requests
-    # receive invalidate/sendpage confirmations
-    # Call appropriate method in a new thread
     while True:
-      # TODO
-      pass
+      # A client exists as long as the ManagerServer has a TCP connection to it.
+      # Therefore, when a client connects here, we make a new thread to handle
+      # its requests.
+      (clientSocket, address) = self.serverSocket.accept()
+      print "[Server] Accepted client with address: " + str(address)
+
+      # Here, we just make a new thread to handle this client and run it, and
+      # get back to waiting for new clients.
+      clientThread = Thread(target = self.HandleClient, args = (clientSocket,
+                            self.id, ))
+      self.id += 1 # id used to uniquely identify print statements
+      clientThread.start()
+
+
+
+  # pass requests along to correct method in a new thread
+  # serve Add/Remove clients requests
+  # serve RequestPage requests
+  # receive invalidate/sendpage confirmations
+  # Call appropriate method in a new thread
+  def HandleClient(self, clientSocket, idParam):
+    # running in a new thread, handle the client
+    idNum = idParam
+    while True:
+      data = clientSocket.recv(7000) # Receive simple data, 4096 bytes here
+      if not data:
+        continue
+      print "[HandleClient id " + str(idNum) + "] " + data # Print it out
 
   def AddClient(self, client, address):
     self.global_lock.Acquire()
