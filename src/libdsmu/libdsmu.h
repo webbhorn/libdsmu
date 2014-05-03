@@ -5,10 +5,7 @@
 #include <stdint.h>
 #include <ucontext.h>
 
-int writehandler(void *pg);
-
-int readhandler(void *pg);
-
-void pgfaultsh(int sig, siginfo_t *info, ucontext_t *ctx);
+int initlibdsmu(void);
+int teardownlibdsmu(void);
 
 #endif  // _LIBDSMU_H_

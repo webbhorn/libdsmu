@@ -13,8 +13,15 @@
 #include "mem.h"
 #include "rpc.h"
 
+int writehandler(void *pg);
+int readhandler(void *pg);
+void pgfaultsh(int sig, siginfo_t *info, ucontext_t *ctx);
+
+
 // Signal handler state.
 static struct sigaction oldact;
+
+static pthread_t tlisten;
 
 // Intercept a pagefault for pages that are:
 // Any other faults should be forwarded to the default handler.
@@ -93,7 +100,7 @@ int readhandler(void *pg) {
 // Try to write from it -- expect handler to run and make it writeable.
 // Try to derefence NULL pointer -- expect handler to forward segfault to the
 // default handler, which should terminate the program.
-int main(void) {
+int initlibdsmu(void) {
   struct sigaction sa;
 
   // Register page fault handler.
@@ -108,7 +115,6 @@ int main(void) {
   initsocks();
 
   // Spin up thread that listens for messages from manager.
-  pthread_t tlisten;
   if ((pthread_create(&tlisten, NULL, listenman, NULL) != 0)) {
     printf("failed to spawn listener thread\n");
     return -1;
@@ -133,6 +139,11 @@ int main(void) {
   printf("p[612] is now %d\n", ((int *)p)[612]);
   */
 
+
+  return 0;
+}
+
+int teardownlibdsmu(void) {
   pthread_join(tlisten, NULL);
 
   // Cleanup.
