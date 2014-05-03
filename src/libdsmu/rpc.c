@@ -84,9 +84,7 @@ void confirminvalidate_encoded(int pgnum, char *pgb64) {
 int invalidate(char *msg) {
   int err;
   char *spgnum = strstr(msg, " ") + 1;
-  printf("PAGE NUMBER STRING: %s\n", spgnum);
   int pgnum = atoi(spgnum);
-  printf("ATOI RETURNED: %d\n", pgnum);
   printf(">> Invalidate page number %d\n", pgnum);
   void *pg = (void *)PGNUM_TO_PGADDR((uintptr_t)pgnum);
 
