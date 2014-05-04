@@ -5,7 +5,14 @@
 #include <stdint.h>
 #include <ucontext.h>
 
-int initlibdsmu(void);
+//
+// Initialize distributed shared memory.
+// The manager is listening on port.
+// Shared memory will begin at starta and will include all pages that include
+// addresses in the range [starta, starta + len).
+//
+int initlibdsmu(int port, uintptr_t starta, size_t len);
+
 int teardownlibdsmu(void);
 
 #endif  // _LIBDSMU_H_

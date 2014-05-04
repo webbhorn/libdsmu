@@ -100,7 +100,7 @@ int readhandler(void *pg) {
 // Try to write from it -- expect handler to run and make it writeable.
 // Try to derefence NULL pointer -- expect handler to forward segfault to the
 // default handler, which should terminate the program.
-int initlibdsmu(void) {
+int initlibdsmu(int port, uintptr_t starta, size_t len) {
   struct sigaction sa;
 
   // Register page fault handler.
@@ -112,7 +112,7 @@ int initlibdsmu(void) {
   }
 
   // Setup sockets.
-  initsocks();
+  initsocks(port);
 
   // Spin up thread that listens for messages from manager.
   if ((pthread_create(&tlisten, NULL, listenman, NULL) != 0)) {
@@ -120,9 +120,9 @@ int initlibdsmu(void) {
     return -1;
   }
 
-  // Setup test memory area.
+  // Setup shared memory area.
   int zero_fd = open("/dev/zero", O_RDONLY, 0644);
-  void *p = mmap((void *)0x12340000, 0x4000, (PROT_READ|PROT_WRITE),
+  void *p = mmap((void *)starta, len, (PROT_READ),
                  (MAP_ANON|MAP_PRIVATE), zero_fd, 0);
   if (p < 0) {
     fprintf(stderr, "mmap failed.\n");
