@@ -20,6 +20,8 @@ void pgfaultsh(int sig, siginfo_t *info, ucontext_t *ctx);
 
 // Signal handler state.
 static struct sigaction oldact;
+uintptr_t shmstarta;
+size_t shmlen;
 
 static pthread_t tlisten;
 
@@ -35,10 +37,10 @@ void pgfaultsh(int sig, siginfo_t *info, ucontext_t *ctx) {
     (oldact.sa_handler)(sig);
   }
 
-  // Only handle faults on the heap (or a special area).
-  if (! ((info->si_addr >= (void *)0x12340000) &&
-	 (info->si_addr < (void *)(0x12340000 + 4000)))) {
-    printf("segfault was not on heap... ignoring.\n");
+  // Only handle faults in the shared memory region. 
+  if (! ((info->si_addr >= (void *)shmstarta) &&
+	 (info->si_addr < (void *)(shmstarta + shmlen)))) {
+    printf("segfault was not in shared memory region... ignoring.\n");
     printf("reverting to old handler\n");
     (oldact.sa_handler)(sig);
   }
@@ -72,7 +74,7 @@ int writehandler(void *pg) {
     b64encode((const char *)pg, PG_SIZE, pgb64);
 
     char msg[PG_SIZE * 2];
-    snprintf(msg, PG_SIZE * 3, "READ FAULT AT %p, %s", pg, pgb64);
+    snprintf(msg, PG_SIZE * 3, "WRITE FAULT AT %p, %s", pg, pgb64);
     if (sendman(msg, strlen(msg)) < 0)
       return -3;
     printf("done talking to server\n");
@@ -103,6 +105,9 @@ int readhandler(void *pg) {
 int initlibdsmu(int port, uintptr_t starta, size_t len) {
   struct sigaction sa;
 
+  shmstarta = starta;
+  shmlen = len;
+
   // Register page fault handler.
   sa.sa_sigaction = (void *)pgfaultsh;
   sigemptyset(&sa.sa_mask);
@@ -130,15 +135,6 @@ int initlibdsmu(int port, uintptr_t starta, size_t len) {
   } else {
     printf("mmap succeeded.\n");
   }
-
-  /*
-  // Trigger a read fault, then a write fault.
-  printf("Will try to read %p\n", ((int *)p) + 612);
-  printf("p[612] is %d\n", ((int *)p)[612]);
-  ((int *)p)[612] = 3;
-  printf("p[612] is now %d\n", ((int *)p)[612]);
-  */
-
 
   return 0;
 }
