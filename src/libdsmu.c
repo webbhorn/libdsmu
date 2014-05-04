@@ -17,6 +17,8 @@ int writehandler(void *pg);
 int readhandler(void *pg);
 void pgfaultsh(int sig, siginfo_t *info, ucontext_t *ctx);
 
+pthread_mutex_t ptable[MAX_SHARED_PAGES];
+pthread_cond_t ptablec[MAX_SHARED_PAGES];
 
 // Signal handler state.
 static struct sigaction oldact;
@@ -90,10 +92,38 @@ int writehandler(void *pg) {
 // Return 0 on success.
 int readhandler(void *pg) {
   printf("Entering readhandler...\n");
-  if (mprotect(pg, PG_SIZE, PROT_READ) == 0) {
-    return 0;
+
+  int pgnum = PGADDR_TO_PGNUM((uintptr_t) pg);
+
+  printf("Acquiring lock for page number %d\n", pgnum);
+
+  pthread_mutex_lock(&ptable[pgnum % MAX_SHARED_PAGES]);
+
+  printf("Trying to read page number %d\n", pgnum);
+  
+  printf("Sending manager read request for page number %d\n", pgnum);
+
+  if (readrequestpage(pgnum) != 0) {
+    pthread_mutex_unlock(&ptable[pgnum % MAX_SHARED_PAGES]);
+    return -1;
   }
-  return -1;
+
+  printf("Waiting for manager to send page number %d\n", pgnum);
+
+  // Wait for page message form server.
+  if (pthread_cond_wait(&ptablec[pgnum % MAX_SHARED_PAGES],
+	                &ptable[pgnum % MAX_SHARED_PAGES]) != 0) {
+    return -1;
+  }
+
+  // Set permissions.
+  if (mprotect(pg, PG_SIZE, PROT_READ) != 0) {
+    pthread_mutex_unlock(&ptable[pgnum]);
+    return -1;
+  }
+
+  pthread_mutex_unlock(&ptable[pgnum]);
+  return 0;
 }
 
 // Test the page fault handler.
@@ -103,6 +133,7 @@ int readhandler(void *pg) {
 // Try to derefence NULL pointer -- expect handler to forward segfault to the
 // default handler, which should terminate the program.
 int initlibdsmu(int port, uintptr_t starta, size_t len) {
+  int i;
   struct sigaction sa;
 
   shmstarta = starta;
@@ -116,6 +147,12 @@ int initlibdsmu(int port, uintptr_t starta, size_t len) {
     fprintf(stderr, "sigaction failed\n");
   }
 
+  // Setup ptable.
+  for (i = 0; i < MAX_SHARED_PAGES; i++) {
+    pthread_mutex_init(&ptable[i], NULL);
+    pthread_cond_init(&ptablec[i], NULL);
+  }
+
   // Setup sockets.
   initsocks(port);
 
@@ -127,7 +164,7 @@ int initlibdsmu(int port, uintptr_t starta, size_t len) {
 
   // Setup shared memory area.
   int zero_fd = open("/dev/zero", O_RDONLY, 0644);
-  void *p = mmap((void *)starta, len, (PROT_READ),
+  void *p = mmap((void *)starta, len, (PROT_NONE),
                  (MAP_ANON|MAP_PRIVATE), zero_fd, 0);
   if (p < 0) {
     fprintf(stderr, "mmap failed.\n");
@@ -140,11 +177,12 @@ int initlibdsmu(int port, uintptr_t starta, size_t len) {
 }
 
 int teardownlibdsmu(void) {
-  pthread_join(tlisten, NULL);
-
-  // Cleanup.
+  int i;
   teardownsocks();
-
+  for (i = 0; i < MAX_SHARED_PAGES; i++) {
+    pthread_cond_destroy(&ptablec[i]);
+    pthread_mutex_destroy(&ptable[i]);
+  }
   return 0;
 }
 
