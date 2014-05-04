@@ -2,7 +2,7 @@ import socket
 import os
 import threading
 
-PORT = 4445
+PORT = 4444
 MAXCONNREQUESTS = 5
 
 class InvalidateServer:
@@ -40,7 +40,7 @@ class InvalidateServer:
 
 	def ReceiveInvalidate(self, socket):
 		data = socket.recv(4096)
-		print "[InvalidateTest] received from: " + socket.getPeername() + " data: " + data
+		print "[InvalidateTest] received from: " + str(socket.getpeername()) + " data: " + data
 
 
 if __name__ == "__main__":
@@ -57,4 +57,6 @@ if __name__ == "__main__":
 
 	except KeyboardInterrupt:
 		server.serverSocket.close()
-		os._exit(0)
+        for sock in server.clients:
+            sock.close()
+	    os._exit(0)
