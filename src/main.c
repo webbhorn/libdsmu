@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 #include "libdsmu.h"
+#include "mem.h"
 
 int main(int argc, char *argv[]) {
 
@@ -14,6 +15,19 @@ int main(int argc, char *argv[]) {
   int port = atoi(argv[1]); 
   initlibdsmu(port, 0x12340000, 4096 * 10);
 
+  // invalidate test.
+  while (1) {
+    int pgnum;
+    printf("> ");
+    scanf("%d", &pgnum);
+
+    uintptr_t addr = PGNUM_TO_PGADDR((uintptr_t)pgnum);
+    void *p = (void *)addr;
+    printf("Will try to read page starting at %p\n", ((int *)p));
+    printf("p[1] is %d\n", ((int *)p)[1]);
+  }
+
+  /*
   // Trigger a read fault, then a write fault.
   void *p = (void *)0x12340000;
   printf("Will try to read %p\n", ((int *)p));
@@ -22,6 +36,7 @@ int main(int argc, char *argv[]) {
   printf("Setting p[0] to 3\n");
   ((int *)p)[0] = 3;
   printf("p[0] is now %d\n", ((int *)p)[0]);
+  */
 
   teardownlibdsmu();
   return 0;

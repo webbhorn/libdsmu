@@ -17,5 +17,4 @@ static inline uintptr_t PGNUM_TO_PGADDR(uintptr_t pgnum) {
   return pgnum << PG_BITS;
 }
 
-
 #endif  // _MEM_H_
