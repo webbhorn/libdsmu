@@ -1,6 +1,7 @@
 import socket
 import os
 import threading
+from threading import Thread
 
 PORT = 4444
 MAXCONNREQUESTS = 5
@@ -24,6 +25,17 @@ class InvalidateServer:
 			self.clients.append(clientsocket)
 			print "[InvalidateTest] Accepted client with address: " + str(address)
 			self.lock.release()
+                        clientThread = Thread(target = self.HandleClient, args
+                                = (clientsocket, ))
+                        client = clientsocket.getsockname()[1]
+                        clientThread.start()
+
+        def HandleClient(self, clientSocket):
+		while True:
+			data = clientSocket.recv(7000)
+                        if not data:
+				continue
+			print data
 
 	def SendInvalidate(self):
 		while True:

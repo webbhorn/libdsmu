@@ -17,6 +17,8 @@ int serverfd;
 struct addrinfo *resolvedAddr;
 struct addrinfo hints;
 
+pthread_mutex_t sockl;
+
 // Listen for manager messages and dispatch them.
 void *listenman(void *ptr) {
   printf("Listening...\n");
@@ -37,8 +39,10 @@ int dispatch(char *msg) {
 
 // Send a message to the manager.
 int sendman(char *str, int len) {
-  // Acquire manager socket lock.
-  return send(serverfd, str, len, 0);
+  pthread_mutex_lock(&sockl);
+  send(serverfd, str, len, 0);
+  pthread_mutex_unlock(&sockl);
+  return 0;
 }
 
 // Initialize socket with manager.
@@ -61,11 +65,18 @@ int initsocks(int port) {
   if (connect(serverfd, resolvedAddr->ai_addr, resolvedAddr->ai_addrlen) < 0)
     return -2;
 
+  if (pthread_mutex_init(&sockl, NULL) != 0) {
+    return -3;
+  }
+
   return 0;
 }
 
 // Cleanup sockets.
 int teardownsocks(void) {
+  if (pthread_mutex_destroy(&sockl) != 0) {
+    return -3;
+  }
   close(serverfd);
   return 0;
 }
@@ -74,6 +85,13 @@ void confirminvalidate(int pgnum) {
   char msg[100] = {0};
   snprintf(msg, 100, "INVALIDATE CONFIRMATION %d", pgnum);
   sendman(msg, strlen(msg));
+}
+
+// Return 0 on success.
+int readrequestpage(int pgnum) {
+  char msg[100] = {0};
+  snprintf(msg, 100, "REQUESTPAGE READ %d", pgnum);
+  return sendman(msg, strlen(msg));
 }
 
 void confirminvalidate_encoded(int pgnum, char *pgb64) {

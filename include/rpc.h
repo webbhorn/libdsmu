@@ -17,4 +17,6 @@ int invalidate(char *msg);
 
 int dispatch(char *msg);
 
+int readrequestpage(int pgnum);
+
 #endif  // _RPC_H_
