@@ -11,6 +11,7 @@ class Client:
     self.name = name
     self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     self.socket.connect(('localhost', 4444))
+    self.page = "FAKEPAGEDATA"
     Thread(target = self.listen).start()
     
 
@@ -20,7 +21,11 @@ class Client:
       print "[%s] %s" % (self.name, data)
       args = data.split(" ")
       if args[0] == "INVALIDATE":
-        self.socket.sendall("INVALIDATE CONFIRMATION " + args[1])
+        if len(args) > 2:
+          self.socket.sendall("INVALIDATE CONFIRMATION " + args[1] + " " + self.page)
+        else:
+          self.socket.sendall("INVALIDATE CONFIRMATION " + args[1])
+
 
   def request_page(self, permission, pagenum):
     self.socket.sendall("REQUESTPAGE " + permission + " " + str(pagenum))
@@ -28,13 +33,19 @@ class Client:
 if __name__ == '__main__':
   c1 = Client("A")
   c2 = Client("B")
+  c3 = Client("C")
 
   c1.request_page(READ, 1)
   c2.request_page(READ, 1)
+  c3.request_page(READ, 1)
 
-  time.sleep(2)
+  time.sleep(.1)
 
   c2.request_page(WRITE, 1)
 
-  time.sleep(2)
+  time.sleep(.1)
+
+  c1.request_page(WRITE, 1)
+
+  time.sleep(.1)
   os._exit(0)
