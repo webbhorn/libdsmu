@@ -48,8 +48,7 @@ class ManagerServer:
 
       # Here, we just make a new thread to handle this client and run it, and
       # get back to waiting for new clients.
-      clientThread = Thread(target = self.HandleClient, args = (clientSocket,
-                            self.id))
+      clientThread = Thread(target = self.HandleClient, args = (clientSocket, ))
       self.id += 1 # id used to uniquely identify print statements
 
       client = clientSocket.getsockname()[1]
@@ -129,7 +128,7 @@ class ManagerServer:
       page_table_entry.current_permission = permission
       page_table_entry.users.add(client)
       self.SendConfirmation(client, pagenumber)
-      
+
       if permission == READ:
         page_table_entry.users= [client]
 
@@ -159,5 +158,7 @@ if __name__ == "__main__":
     manager = ManagerServer(PORT, NUMPAGES)
     manager.Listen()
   except KeyboardInterrupt:
+    for c, s in manager.clients.iteritems():
+      s.close()
     os._exit(0)
 
