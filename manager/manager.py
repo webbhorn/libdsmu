@@ -19,9 +19,8 @@ class PageTableEntry:
     self.lock = Lock()
     self.users = []
     self.current_permission = NONE
-    self.cached_page = NONE
     self.invalidate_confirmations = {}
-    self.send_page_confirmation = False
+    self.b64_encoded_page = "EXISTING"
 
 class ManagerServer:
   def __init__(self, port, numPages):
@@ -82,7 +81,6 @@ class ManagerServer:
   def ProcessMessage(self, client, data):
     args = data.split(" ")
 
-
     if args[0] == "REQUESTPAGE":
       self.RequestPage(client, int(args[2]) % NUMPAGES, args[1])
     elif args[0] == "INVALIDATE":
@@ -95,7 +93,7 @@ class ManagerServer:
   def AddClient(self, client, socket):
     self.clients[client] = socket
 
-  def Invalidate(self, client, pagenumber):
+  def Invalidate(self, client, pagenumber, getpage):
     # Tell clients using the page to invalidate, wait for confirmation
     page_table_entry = self.page_table_entries[pagenumber]
     page_table_entry.invalidate_confirmations = {}
@@ -106,10 +104,13 @@ class ManagerServer:
 
     for user in page_table_entry.users:
       if user != client:
-        self.clients[user].send("INVALIDATE " + str(pagenumber))
+        if getpage:
+          self.clients[user].send("INVALIDATE " + str(pagenumber) + " PAGEDATA")
+        else:
+          self.clients[user].send("INVALIDATE " + str(pagenumber))
 
     while not reduce(operator.and_, page_table_entry.invalidate_confirmations.values(), True):
-      time.sleep(1)
+      time.sleep(.1)
 
     # When all have confirmed, return
 
@@ -118,42 +119,50 @@ class ManagerServer:
     page_table_entry = self.page_table_entries[pagenumber]
     page_table_entry.invalidate_confirmations[client] = True
 
-  def SendConfirmation(self, client, pagenumber):
+    if data:
+      page_table_entry.b64_encoded_page = data
+
+  def SendConfirmation(self, client, pagenumber, b64_encoded_page):
     socket = self.clients[client]
-    socket.send("REQUESTPAGE CONFIRMATION " + str(pagenumber))
+    socket.send("REQUESTPAGE CONFIRMATION " + str(pagenumber) + " " + str(b64_encoded_page))
 
   def RequestPage(self, client, pagenumber, permission):
     # Invalidate page with other clients (if necessary)
     # Make sure client has latests page, ask other client to send page if necessary
     page_table_entry = self.page_table_entries[pagenumber]
+    page_table_entry.lock.acquire()
 
     # Initial use of page FAULT HANDLER
     if page_table_entry.current_permission == NONE:
       page_table_entry.current_permission = permission
       page_table_entry.users = [client]
-      self.SendConfirmation(client, pagenumber)
+      self.SendConfirmation(client, pagenumber, page_table_entry.b64_encoded_page)
 
       if permission == READ:
         page_table_entry.users= [client]
 
+      page_table_entry.lock.release()
       return
 
     # READ FAULT HANDLER
     if permission == READ:
       if page_table_entry.current_permission == WRITE:
-        self.Invalidate(client, pagenumber)
+        self.Invalidate(client, pagenumber, True)
         page_table_entry.users = [client]
       else:
         page_table_entry.users.append(client)
-        # send cached page
 
     # WRITE FAULT HANDLER
     if permission == WRITE:
-      self.Invalidate(client, pagenumber)
+      if page_table_entry.current_permission == WRITE:
+        self.Invalidate(client, pagenumber, True)
+      else:
+        self.Invalidate(client, pagenumber, False)
       page_table_entry.users = [client]
 
-    self.SendConfirmation(client, pagenumber)
+    self.SendConfirmation(client, pagenumber, page_table_entry.b64_encoded_page)
     page_table_entry.current_permission = permission
+    page_table_entry.lock.release()
 
 if __name__ == "__main__":
   try:
