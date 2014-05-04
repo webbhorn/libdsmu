@@ -48,7 +48,7 @@ int initsocks(void) {
   hints.ai_family = AF_INET;
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_flags = AI_PASSIVE;
-  if (getaddrinfo(NULL, "4445", &hints, &resolvedAddr) < 0)
+  if (getaddrinfo(NULL, "4444", &hints, &resolvedAddr) < 0)
     return -2;
 
   serverfd = socket(resolvedAddr->ai_family, resolvedAddr->ai_socktype,
