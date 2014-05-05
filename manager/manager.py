@@ -122,9 +122,9 @@ class ManagerServer:
     if data:
       page_table_entry.b64_encoded_page = data
 
-  def SendConfirmation(self, client, pagenumber, b64_encoded_page):
+  def SendConfirmation(self, client, pagenumber, permission, b64_encoded_page):
     socket = self.clients[client]
-    socket.send("REQUESTPAGE CONFIRMATION " + str(pagenumber) + " " + str(b64_encoded_page))
+    socket.send("REQUESTPAGE " + permission + " CONFIRMATION " + str(pagenumber) + " " + str(b64_encoded_page))
 
   def RequestPage(self, client, pagenumber, permission):
     # Invalidate page with other clients (if necessary)
@@ -136,7 +136,7 @@ class ManagerServer:
     if page_table_entry.current_permission == NONE:
       page_table_entry.current_permission = permission
       page_table_entry.users = [client]
-      self.SendConfirmation(client, pagenumber, page_table_entry.b64_encoded_page)
+      self.SendConfirmation(client, pagenumber, permission, page_table_entry.b64_encoded_page)
 
       if permission == READ:
         page_table_entry.users= [client]
@@ -160,7 +160,7 @@ class ManagerServer:
         self.Invalidate(client, pagenumber, False)
       page_table_entry.users = [client]
 
-    self.SendConfirmation(client, pagenumber, page_table_entry.b64_encoded_page)
+    self.SendConfirmation(client, pagenumber, permission, page_table_entry.b64_encoded_page)
     page_table_entry.current_permission = permission
     page_table_entry.lock.release()
 
