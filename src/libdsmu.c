@@ -33,15 +33,13 @@ void pgfaultsh(int sig, siginfo_t *info, ucontext_t *ctx) {
 
   // Ignore signals that are not segfaults.
   if (sig != SIGSEGV) {
-    printf("signal is not a segfault... ignoring.\n");
-    printf("reverting to old handler\n");
     (oldact.sa_handler)(sig);
   }
 
   // Only handle faults in the shared memory region. 
   if (! ((info->si_addr >= (void *)shmstarta) &&
 	 (info->si_addr < (void *)(shmstarta + shmlen)))) {
-    printf("segfault was not in shared memory region... ignoring.\n");
+    printf("SEGFAULT not in shared memory region (was at %p)... ignoring.\n", (void *)info->si_addr);
     printf("reverting to old handler\n");
     (oldact.sa_handler)(sig);
   }
@@ -59,8 +57,6 @@ void pgfaultsh(int sig, siginfo_t *info, ucontext_t *ctx) {
       exit(1);
     }
   }
-
-  printf("page fault handled successfully.\n");
   return;
 }
 
@@ -69,19 +65,6 @@ void pgfaultsh(int sig, siginfo_t *info, ucontext_t *ctx) {
 // For now, just change permissions to R+W.
 // Return 0 on success.
 int writehandler(void *pg) {
-  printf("Entering writehandler...\n");
-  if (mprotect(pg, PG_SIZE, (PROT_READ|PROT_WRITE)) == 0) {
-    char pgb64[PG_SIZE * 2] = {0};
-    b64encode((const char *)pg, PG_SIZE, pgb64);
-
-    char msg[PG_SIZE * 2];
-    snprintf(msg, PG_SIZE * 3, "WRITE FAULT AT %p, %s", pg, pgb64);
-    if (sendman(msg, strlen(msg)) < 0)
-      return -3;
-    printf("done talking to server\n");
-
-    return 0;
-  }
   return -1;
 }
 
@@ -90,31 +73,15 @@ int writehandler(void *pg) {
 // For now, just change permissions to R-.
 // Return 0 on success.
 int readhandler(void *pg) {
-  printf("Entering readhandler...\n");
-
   int pgnum = PGADDR_TO_PGNUM((uintptr_t) pg);
-
-  printf("Acquiring lock for page number %d\n", pgnum);
-
-  printf("Trying to read page number %d\n", pgnum);
-  
-  printf("Sending manager read request for page number %d\n", pgnum);
-
   if (readrequestpage(pgnum) != 0) {
     return -1;
   }
 
-  printf("Waiting for manager to send page number %d\n", pgnum);
-
   // Wait for page message form server.
   waiting[pgnum % MAX_SHARED_PAGES] = 1;
-  printf("waiting[.] is at %p\n", (void *)waiting);
-  printf("pgnum is %d", pgnum);
-
   while (waiting[pgnum % MAX_SHARED_PAGES] == 1)  {
   }
-
-  printf("RH: woke up... received msg!\n");
 
   return 0;
 }

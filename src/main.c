@@ -23,8 +23,7 @@ int main(int argc, char *argv[]) {
 
     uintptr_t addr = PGNUM_TO_PGADDR((uintptr_t)pgnum);
     void *p = (void *)addr;
-    printf("Will try to read page starting at %p\n", ((int *)p));
-    printf("p[1] is %d\n", ((int *)p)[1]);
+    printf("p[1] = %d\n", ((int *)p)[1]);
   }
 
   /*
