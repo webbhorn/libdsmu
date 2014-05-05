@@ -42,10 +42,11 @@ if __name__ == '__main__':
   time.sleep(.1)
 
   c2.request_page(WRITE, 1)
+  c2.page = "ADSDFASFDASF"
 
   time.sleep(.1)
 
   c1.request_page(WRITE, 1)
 
-  time.sleep(.1)
+  time.sleep(1)
   os._exit(0)
