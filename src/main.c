@@ -23,7 +23,8 @@ int main(int argc, char *argv[]) {
 
     uintptr_t addr = PGNUM_TO_PGADDR((uintptr_t)pgnum);
     void *p = (void *)addr;
-    printf("p[1] = %d\n", ((int *)p)[1]);
+    ((char *)p)[1] = 'a';
+    printf("p[1] = %c\n", ((char *)p)[1]);
   }
 
   /*

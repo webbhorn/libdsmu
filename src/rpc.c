@@ -98,9 +98,9 @@ void confirminvalidate(int pgnum) {
 }
 
 // Return 0 on success.
-int readrequestpage(int pgnum) {
+int requestpage(int pgnum, char *type) {
   char msg[100] = {0};
-  snprintf(msg, 100, "REQUESTPAGE READ %d", pgnum);
+  snprintf(msg, 100, "REQUESTPAGE %s %d", type, pgnum);
   return sendman(msg, strlen(msg));
 }
 
@@ -110,7 +110,11 @@ void confirminvalidate_encoded(int pgnum, char *pgb64) {
   sendman(msg, strlen(msg));
 }
 
-int handlereadconfirm(int pgnum, void *pg, char *msg) {
+int handleconfirm(char *msg) {
+  char *spgnum = strstr(msg, "ION ") + 4;
+  int pgnum = atoi(spgnum);
+  void *pg = (void *)PGNUM_TO_PGADDR((uintptr_t)pgnum);
+
   int err;
   int nspaces;
 
@@ -143,21 +147,21 @@ int handlereadconfirm(int pgnum, void *pg, char *msg) {
     }
   }
 
-  if ((err = mprotect(pg, 1, PROT_READ)) != 0) {
-    fprintf(stderr, "permission setting of page addr %p failed with error %d\n", pg, err);
-    return -1;
+  if (strstr(msg, "WRITE") == NULL) {
+    if ((err = mprotect(pg, 1, PROT_READ)) != 0) {
+      fprintf(stderr, "permission setting of page addr %p failed with error %d\n", pg, err);
+      return -1;
+    }
+  } else {
+    if ((err = mprotect(pg, 1, PROT_READ|PROT_WRITE)) != 0) {
+      fprintf(stderr, "permission setting of page addr %p failed with error %d\n", pg, err);
+      return -1;
+    }
   }
+
 
   waiting[pgnum % MAX_SHARED_PAGES] = 0;
   return 0;
-}
-
-int handleconfirm(char *msg) {
-  char *spgnum = strstr(msg, "ION ") + 4;
-  int pgnum = atoi(spgnum);
-  void *pg = (void *)PGNUM_TO_PGADDR((uintptr_t)pgnum);
-
-  return handlereadconfirm(pgnum, pg, msg);
 }
 
 // Handle invalidate messages.

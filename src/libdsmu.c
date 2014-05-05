@@ -65,7 +65,16 @@ void pgfaultsh(int sig, siginfo_t *info, ucontext_t *ctx) {
 // For now, just change permissions to R+W.
 // Return 0 on success.
 int writehandler(void *pg) {
-  return -1;
+  int pgnum = PGADDR_TO_PGNUM((uintptr_t) pg);
+  if (requestpage(pgnum, "WRITE") != 0) {
+    return -1;
+  }
+
+  waiting[pgnum % MAX_SHARED_PAGES] = 1;
+  while (waiting[pgnum % MAX_SHARED_PAGES] == 1)  {
+  }
+
+  return 0;
 }
 
 // Connect to manager, etc.
@@ -74,7 +83,7 @@ int writehandler(void *pg) {
 // Return 0 on success.
 int readhandler(void *pg) {
   int pgnum = PGADDR_TO_PGNUM((uintptr_t) pg);
-  if (readrequestpage(pgnum) != 0) {
+  if (requestpage(pgnum, "READ") != 0) {
     return -1;
   }
 
