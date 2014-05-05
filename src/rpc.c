@@ -26,8 +26,9 @@ void *listenman(void *ptr) {
   printf("Listening...\n");
   while (1) {
     char buf[7000] = {0};
-    recv(serverfd, (void *)buf, 7000, 0);
-    dispatch(buf);
+    if (recv(serverfd, (void *)buf, 7000, 0) > 0) {
+        dispatch(buf);
+    }
   }
 }
 
