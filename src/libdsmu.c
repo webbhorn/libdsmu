@@ -17,13 +17,12 @@ int writehandler(void *pg);
 int readhandler(void *pg);
 void pgfaultsh(int sig, siginfo_t *info, ucontext_t *ctx);
 
-pthread_mutex_t ptable[MAX_SHARED_PAGES];
-pthread_cond_t ptablec[MAX_SHARED_PAGES];
-
 // Signal handler state.
 static struct sigaction oldact;
 uintptr_t shmstarta;
 size_t shmlen;
+
+volatile int waiting[MAX_SHARED_PAGES];
 
 static pthread_t tlisten;
 
@@ -97,32 +96,27 @@ int readhandler(void *pg) {
 
   printf("Acquiring lock for page number %d\n", pgnum);
 
-  pthread_mutex_lock(&ptable[pgnum % MAX_SHARED_PAGES]);
-
   printf("Trying to read page number %d\n", pgnum);
   
   printf("Sending manager read request for page number %d\n", pgnum);
 
   if (readrequestpage(pgnum) != 0) {
-    pthread_mutex_unlock(&ptable[pgnum % MAX_SHARED_PAGES]);
     return -1;
   }
 
   printf("Waiting for manager to send page number %d\n", pgnum);
 
   // Wait for page message form server.
-  if (pthread_cond_wait(&ptablec[pgnum % MAX_SHARED_PAGES],
-	                &ptable[pgnum % MAX_SHARED_PAGES]) != 0) {
-    return -1;
+  waiting[pgnum % MAX_SHARED_PAGES] = 1;
+  printf("waiting[.] is at %p\n", (void *)waiting);
+  printf("pgnum is %d", pgnum);
+
+  while (waiting[pgnum % MAX_SHARED_PAGES] == 1)  {
+    printf("%d", waiting[pgnum % MAX_SHARED_PAGES]);
   }
 
-  // Set permissions.
-  if (mprotect(pg, PG_SIZE, PROT_READ) != 0) {
-    pthread_mutex_unlock(&ptable[pgnum]);
-    return -1;
-  }
+  printf("RH: woke up... received msg!\n");
 
-  pthread_mutex_unlock(&ptable[pgnum]);
   return 0;
 }
 
@@ -149,8 +143,7 @@ int initlibdsmu(int port, uintptr_t starta, size_t len) {
 
   // Setup ptable.
   for (i = 0; i < MAX_SHARED_PAGES; i++) {
-    pthread_mutex_init(&ptable[i], NULL);
-    pthread_cond_init(&ptablec[i], NULL);
+    waiting[i] = 0;
   }
 
   // Setup sockets.
@@ -177,12 +170,7 @@ int initlibdsmu(int port, uintptr_t starta, size_t len) {
 }
 
 int teardownlibdsmu(void) {
-  int i;
   teardownsocks();
-  for (i = 0; i < MAX_SHARED_PAGES; i++) {
-    pthread_cond_destroy(&ptablec[i]);
-    pthread_mutex_destroy(&ptable[i]);
-  }
   return 0;
 }
 

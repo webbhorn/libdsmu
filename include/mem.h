@@ -1,6 +1,9 @@
 #ifndef _MEM_H_
 #define _MEM_H_
 
+#include <pthread.h>
+#include <stdint.h>
+
 #define REG_ERR 19
 #define PG_WRITE 0x2
 #define PG_PRESENT 0x1

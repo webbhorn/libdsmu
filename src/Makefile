@@ -4,7 +4,7 @@ CFLAGS = -Wall $(INCLUDES)
 LFLAGS =
 LIBS = -lb64 -lpthread
 
-SRCS = b64.c libdsmu.c main.c rpc.c
+SRCS = b64.c libdsmu.c main.c rpc.c mem.c
 OBJS = $(SRCS:.c=.o)
 
 MAIN = main
@@ -21,7 +21,7 @@ $(MAIN): $(OBJS)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	$(RM) *.o *~
+	$(RM) *.o *~ $(MAIN)
 
 depend:
 	$(SRCS)

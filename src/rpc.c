@@ -19,6 +19,8 @@ struct addrinfo hints;
 
 pthread_mutex_t sockl;
 
+extern volatile int waiting[MAX_SHARED_PAGES];
+
 // Listen for manager messages and dispatch them.
 void *listenman(void *ptr) {
   printf("Listening...\n");
@@ -34,7 +36,7 @@ int dispatch(char *msg) {
   if (strstr(msg, "INVALIDATE") != NULL) {
     invalidate(msg);
   }
-  if (strstr(msg, "REQUESTPAGE CONFIRMATION") != NULL) {
+  if (strstr(msg, "REQUESTPAGE") != NULL) {
     handleconfirm(msg);
   }
   return 0;
@@ -105,18 +107,57 @@ void confirminvalidate_encoded(int pgnum, char *pgb64) {
 
 int handlereadconfirm(int pgnum, void *pg, char *msg) {
   int err;
+  int nspaces;
   printf(">>>> Read confirmation\n");
 
   // If EXISTING message, use existing data.
   if (strstr(msg, "EXISTING") != NULL) {
-    printf("using existing page data\n");
-    if ((err = mprotect(pg, 1, PROT_READ)) != 0) {
-      fprintf(stderr, "Invalidation of page addr %p failed with error %d\n", pg, err);
-      return -1;
-    }
+    printf("RPCH: using existing page data\n");
   } else {
     // Otherwise decode the b64 data into the page.
+    // The b64 string begins after the 4th ' ' character in msg.
+    char *b64str = msg;
+    nspaces = 0;
+    while (nspaces < 3) {
+      if (b64str[0] == ' ') {
+	nspaces++;
+      }
+      b64str++;
+    }
+    
+    char b64data[5000];
+    if (b64decode(b64str, b64data) < 0) {
+      fprintf(stderr, "Failure decoding b64 string");
+      return -1;
+    }
+
+    // memcpy -- must set to write first to fill in page!
+    if ((err = mprotect(pg, 1, (PROT_READ|PROT_WRITE))) != 0) {
+      fprintf(stderr, "permission setting of page addr %p failed with error %d\n", pg, err);
+      return -1;
+    }
+    printf("RPCH: copying page into region...\n");
+    if (memcpy(pg, b64data, 10) == NULL) {
+      fprintf(stderr, "memcpy failed.\n");
+      return -1;
+    }
+    printf("RPCH: done copying page into region\n");
   }
+
+  if ((err = mprotect(pg, 1, PROT_READ)) != 0) {
+    fprintf(stderr, "permission setting of page addr %p failed with error %d\n", pg, err);
+    return -1;
+  }
+
+  printf("going to pritn value of waiting[i]...\n");
+  printf("value of the waiting thing: %d\n", waiting[pgnum % MAX_SHARED_PAGES]);
+  printf("RPCH: signaling condition variable for page %d\n", pgnum);
+  printf("waiting[.] is at %p\n", (void *)waiting);
+  printf("pgnum is %d\n", pgnum);
+  waiting[pgnum & MAX_SHARED_PAGES] = 0;
+  printf("RPCH: done signaling condition variable for page %d\n", pgnum);
+  printf("RPCH: value is: %d\n", waiting[pgnum & MAX_SHARED_PAGES]);
+
   return 0;
 }
 
