@@ -36,8 +36,7 @@ int dispatch(char *msg) {
   if (strstr(msg, "INVALIDATE") != NULL) {
     printf("%s\n", msg);
     invalidate(msg);
-  }
-  if (strstr(msg, "REQUESTPAGE") != NULL) {
+  } else if (strstr(msg, "REQUESTPAGE") != NULL) {
     printf("%.40s\n", msg);
     handleconfirm(msg);
   } else {
