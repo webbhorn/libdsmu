@@ -66,12 +66,12 @@ class ManagerServer:
     while True:
 
       try:
-        data = clientSocket.recv(7000) # Receive simple data, 4096 bytes here
+        data = clientSocket.recv(7000)
         if not data: break
       except:
         break
 
-      print "[Manager] " + data[0:40]
+      print "[Manager] " + str(client[1]) + " " + data[0:40]
       thread = Thread(target = self.ProcessMessage, args = (client, data))
       thread.start()
 
