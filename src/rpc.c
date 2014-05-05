@@ -154,9 +154,9 @@ int handlereadconfirm(int pgnum, void *pg, char *msg) {
   printf("RPCH: signaling condition variable for page %d\n", pgnum);
   printf("waiting[.] is at %p\n", (void *)waiting);
   printf("pgnum is %d\n", pgnum);
-  waiting[pgnum & MAX_SHARED_PAGES] = 0;
+  waiting[pgnum % MAX_SHARED_PAGES] = 0;
   printf("RPCH: done signaling condition variable for page %d\n", pgnum);
-  printf("RPCH: value is: %d\n", waiting[pgnum & MAX_SHARED_PAGES]);
+  printf("RPCH: value is: %d\n", waiting[pgnum % MAX_SHARED_PAGES]);
 
   return 0;
 }

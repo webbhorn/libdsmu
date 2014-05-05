@@ -112,7 +112,6 @@ int readhandler(void *pg) {
   printf("pgnum is %d", pgnum);
 
   while (waiting[pgnum % MAX_SHARED_PAGES] == 1)  {
-    printf("%d", waiting[pgnum % MAX_SHARED_PAGES]);
   }
 
   printf("RH: woke up... received msg!\n");

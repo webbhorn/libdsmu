@@ -4,7 +4,7 @@ CFLAGS = -Wall $(INCLUDES)
 LFLAGS =
 LIBS = -lb64 -lpthread
 
-SRCS = b64.c libdsmu.c main.c rpc.c mem.c
+SRCS = b64.c libdsmu.c main.c rpc.c
 OBJS = $(SRCS:.c=.o)
 
 MAIN = main
