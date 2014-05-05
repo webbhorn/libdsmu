@@ -6,7 +6,7 @@ import time
 import operator
 
 PORT = 4444
-NUMPAGES = 100
+NUMPAGES = 1000000
 MAXCONNREQUESTS = 5
 
 # PERMISSION TYPES
