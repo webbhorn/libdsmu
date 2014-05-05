@@ -71,7 +71,7 @@ class ManagerServer:
       except:
         break
 
-      print "[Manager] " + data
+      print "[Manager] " + data[0:40]
       thread = Thread(target = self.ProcessMessage, args = (client, data))
       thread.start()
 

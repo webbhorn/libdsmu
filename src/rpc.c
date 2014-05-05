@@ -38,7 +38,7 @@ int dispatch(char *msg) {
     invalidate(msg);
   }
   if (strstr(msg, "REQUESTPAGE") != NULL) {
-    printf("%s\n", msg);
+    printf("%.40s\n", msg);
     handleconfirm(msg);
   } else {
     printf("Undefined message.\n");
@@ -48,7 +48,7 @@ int dispatch(char *msg) {
 
 // Send a message to the manager.
 int sendman(char *str, int len) {
-  printf("%s\n", str);
+  printf("%.40s\n", str);
   pthread_mutex_lock(&sockl);
   send(serverfd, str, len, 0);
   pthread_mutex_unlock(&sockl);
