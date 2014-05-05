@@ -19,4 +19,8 @@ int dispatch(char *msg);
 
 int readrequestpage(int pgnum);
 
+int handleconfirm(char *msg);
+
+int handlereadconfirm(int pgnum, void *pg, char *msg);
+
 #endif  // _RPC_H_

@@ -34,6 +34,9 @@ int dispatch(char *msg) {
   if (strstr(msg, "INVALIDATE") != NULL) {
     invalidate(msg);
   }
+  if (strstr(msg, "REQUESTPAGE CONFIRMATION") != NULL) {
+    handleconfirm(msg);
+  }
   return 0;
 }
 
@@ -98,6 +101,32 @@ void confirminvalidate_encoded(int pgnum, char *pgb64) {
   char msg[10000] = {0};
   snprintf(msg, 100 + strlen(pgb64), "INVALIDATE CONFIRMATION %d %s", pgnum, pgb64);
   sendman(msg, strlen(msg));
+}
+
+int handlereadconfirm(int pgnum, void *pg, char *msg) {
+  int err;
+  printf(">>>> Read confirmation\n");
+
+  // If EXISTING message, use existing data.
+  if (strstr(msg, "EXISTING") != NULL) {
+    printf("using existing page data\n");
+    if ((err = mprotect(pg, 1, PROT_READ)) != 0) {
+      fprintf(stderr, "Invalidation of page addr %p failed with error %d\n", pg, err);
+      return -1;
+    }
+  } else {
+    // Otherwise decode the b64 data into the page.
+  }
+  return 0;
+}
+
+int handleconfirm(char *msg) {
+  char *spgnum = strstr(msg, "ION ") + 4;
+  int pgnum = atoi(spgnum);
+  printf(">> REQUESTPAGE CONFIRMATION %d\n", pgnum);
+  void *pg = (void *)PGNUM_TO_PGADDR((uintptr_t)pgnum);
+
+  return handlereadconfirm(pgnum, pg, msg);
 }
 
 // Handle invalidate messages.
