@@ -15,10 +15,6 @@ int initlibdsmu(int port, uintptr_t starta, size_t len);
 
 int teardownlibdsmu(void);
 
-void setwaiting(int page, int val);
-
-int getwaiting(int page);
-
 #define SHRPOL_NONE (0)
 #define SHRPOL_INIT_ZERO (1 << 0)
 

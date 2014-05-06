@@ -8,10 +8,6 @@ TESTS = main pingpong
 SRCS = b64.c libdsmu.c rpc.c
 OBJS = $(SRCS:.c=.o)
 
-ifeq ($(DEBUG), 1)
-	CFLAGS += -DDEBUG -g
-endif
-	
 .PHONY: depend clean
 
 all: $(TESTS)

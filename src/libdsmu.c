@@ -8,7 +8,6 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <ucontext.h>
-#include <unistd.h>
 
 #include "b64.h"
 #include "libdsmu.h"
@@ -92,12 +91,8 @@ int writehandler(void *pg) {
     return -1;
   }
 
-//  waiting[pgnum % MAX_SHARED_PAGES] = 1;
-  setwaiting(pgnum, 1);
-//  while (waiting[pgnum % MAX_SHARED_PAGES] == 1)  {
-  while (getwaiting(pgnum) == 1)  {
-    fprintf(stderr, "[libdsmu] waiting %d\n",waiting[pgnum % MAX_SHARED_PAGES] );
-    sleep(1);
+  waiting[pgnum % MAX_SHARED_PAGES] = 1;
+  while (waiting[pgnum % MAX_SHARED_PAGES] == 1)  {
   }
 
   return 0;
@@ -114,10 +109,8 @@ int readhandler(void *pg) {
   }
 
   // Wait for page message form server.
-  //waiting[pgnum % MAX_SHARED_PAGES] = 1;
-  setwaiting(pgnum, 1);
-  //while (waiting[pgnum % MAX_SHARED_PAGES] == 1)  {
-  while (getwaiting(pgnum) == 1)  {
+  waiting[pgnum % MAX_SHARED_PAGES] = 1;
+  while (waiting[pgnum % MAX_SHARED_PAGES] == 1)  {
   }
 
   return 0;
@@ -204,10 +197,3 @@ int teardownlibdsmu(void) {
   return 0;
 }
 
-void setwaiting(int page, int val) {
-  waiting[page % MAX_SHARED_PAGES] = val;
-}
-
-int getwaiting(int page) {
-  return waiting[page % MAX_SHARED_PAGES];
-}

@@ -19,18 +19,18 @@ int main(int argc, char *argv[]) {
   int temp = *ball;
 
   while ((temp) < 20) {
-    printf("[PINGPONG] ball = %d me = %d\n", temp, atoi(argv[2]));
     if ((atoi(argv[2]) == 1) && ((temp) % 2 == 0)) {
+      printf("[PINGPONG] ball = %d me = %d\n", temp, atoi(argv[2]));
       temp += 1;
       *ball = temp;
       continue;
     } else if ((atoi(argv[2]) == 2) && ((temp) % 2 == 1)) {
+      printf("[PINGPONG] ball = %d me = %d\n", temp, atoi(argv[2]));
       temp += 1;
       *ball = temp;
       continue;
     }
 
-    sleep(1);
     temp = *ball;
   }
 
