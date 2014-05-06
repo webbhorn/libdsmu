@@ -1,3 +1,4 @@
+#include <err.h>
 #include <fcntl.h>
 #include <pthread.h>
 #include <signal.h>
@@ -17,14 +18,35 @@ int writehandler(void *pg);
 int readhandler(void *pg);
 void pgfaultsh(int sig, siginfo_t *info, ucontext_t *ctx);
 
+
 // Signal handler state.
 static struct sigaction oldact;
-uintptr_t shmstarta;
-size_t shmlen;
+
+// Shared regions.
+#define MAX_SHARED_REGIONS 100
+int nextshrp;
+struct sharedregion shrp[MAX_SHARED_REGIONS];
 
 volatile int waiting[MAX_SHARED_PAGES];
 
 static pthread_t tlisten;
+
+// Check if the address (addr) is in a shared memory range.
+// The address is in a shared memory page if it is in the same page as any
+// address in the range [start, start + len).
+// If it is a shared address, return 1.
+// If it is not a shared address, return 0.
+int sharedaddr(void *addr) {
+  int i;
+  int uaddr = (uintptr_t)addr;
+  for (i = 0; i < nextshrp; i++) {
+    if ((uaddr >= shrp[i].start) &&
+	(uaddr < PGADDR(shrp[i].start + shrp[i].len + PG_SIZE))) {
+      return 1;
+    }
+  }
+  return 0;
+}
 
 // Intercept a pagefault for pages that are:
 // Any other faults should be forwarded to the default handler.
@@ -37,8 +59,7 @@ void pgfaultsh(int sig, siginfo_t *info, ucontext_t *ctx) {
   }
 
   // Only handle faults in the shared memory region. 
-  if (! ((info->si_addr >= (void *)shmstarta) &&
-	 (info->si_addr < (void *)(shmstarta + shmlen)))) {
+  if (! sharedaddr(info->si_addr)) {
     printf("SEGFAULT not in shared memory region (was at %p)... ignoring.\n", (void *)info->si_addr);
     printf("reverting to old handler\n");
     (oldact.sa_handler)(sig);
@@ -95,6 +116,31 @@ int readhandler(void *pg) {
   return 0;
 }
 
+int addsharedregion(uintptr_t start, size_t len, int policy) {
+  if (nextshrp >= MAX_SHARED_PAGES) {
+    return -1;
+  }
+
+  if (policy & SHRPOL_INIT_ZERO) {
+    int zero_fd = open("/dev/zero", O_RDONLY, 0644);
+    void *p = mmap((void *)start, len, (PROT_NONE),
+                   (MAP_ANON|MAP_PRIVATE), zero_fd, 0);
+    if ((p < 0) || (p == NULL)) {
+      fprintf(stderr, "mmap failed.\n");
+      return -1;
+    }
+  } else {
+    if ((mprotect((void *)start, PGADDR(len + PG_SIZE), PROT_NONE)) != 0) {
+      return -1;
+    }
+  }
+
+  struct sharedregion r = {start, len, policy};
+  shrp[nextshrp] = r;
+  nextshrp++;
+  return 0;
+}
+
 // Test the page fault handler.
 // Register the handler, setup a non-readable, non-writeable memory region.
 // Try to read from it -- expect handler to run and make it readable.
@@ -104,9 +150,6 @@ int readhandler(void *pg) {
 int initlibdsmu(int port, uintptr_t starta, size_t len) {
   int i;
   struct sigaction sa;
-
-  shmstarta = starta;
-  shmlen = len;
 
   // Register page fault handler.
   sa.sa_sigaction = (void *)pgfaultsh;
@@ -121,24 +164,29 @@ int initlibdsmu(int port, uintptr_t starta, size_t len) {
     waiting[i] = 0;
   }
 
+  // Setup shared regions.
+  nextshrp = 0;
+  for (i = 0; i < MAX_SHARED_REGIONS; i++) {
+    struct sharedregion z = {
+      .start = 0,
+      .len = 0,
+      .policy = 0,
+    };
+    shrp[i] = z;
+  }
+
+  // Setup optional initial shared memory area.
+  if (addsharedregion(starta, len, SHRPOL_INIT_ZERO) < 0) {
+    err(1, "Could not initialize shared region.");
+  }
+
   // Setup sockets.
   initsocks(port);
 
   // Spin up thread that listens for messages from manager.
   if ((pthread_create(&tlisten, NULL, listenman, NULL) != 0)) {
-    printf("failed to spawn listener thread\n");
+    fprintf(stderr, "failed to spawn listener thread\n");
     return -1;
-  }
-
-  // Setup shared memory area.
-  int zero_fd = open("/dev/zero", O_RDONLY, 0644);
-  void *p = mmap((void *)starta, len, (PROT_NONE),
-                 (MAP_ANON|MAP_PRIVATE), zero_fd, 0);
-  if (p < 0) {
-    fprintf(stderr, "mmap failed.\n");
-    return 1;
-  } else {
-    printf("mmap succeeded.\n");
   }
 
   return 0;

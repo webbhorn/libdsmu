@@ -5,7 +5,7 @@ from threading import Thread
 import time
 import operator
 
-DEBUG=False
+DEBUG=True
 
 PORT = 4444
 NUMPAGES = 1000000
