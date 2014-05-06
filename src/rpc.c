@@ -35,10 +35,10 @@ void *listenman(void *ptr) {
 // Handle newly arrived messages.
 int dispatch(char *msg) {
   if (strstr(msg, "INVALIDATE") != NULL) {
-    printf("%s\n", msg);
+    printf("< %.40s\n", msg);
     invalidate(msg);
   } else if (strstr(msg, "REQUESTPAGE") != NULL) {
-    printf("%.40s\n", msg);
+    printf("< %.40s\n", msg);
     handleconfirm(msg);
   } else {
     printf("Undefined message.\n");
@@ -48,7 +48,7 @@ int dispatch(char *msg) {
 
 // Send a message to the manager.
 int sendman(char *str, int len) {
-  printf("%.40s\n", str);
+  printf("> %s\n", str);
   pthread_mutex_lock(&sockl);
   send(serverfd, str, len, 0);
   pthread_mutex_unlock(&sockl);
@@ -123,14 +123,14 @@ int handleconfirm(char *msg) {
   if (strstr(msg, "EXISTING") == NULL) {
     char *b64str = msg;
     nspaces = 0;
-    while (nspaces < 3) {
+    while (nspaces < 4) {
       if (b64str[0] == ' ') {
 	nspaces++;
       }
       b64str++;
     }
     
-    char b64data[5000];
+    char b64data[7000];
     if (b64decode(b64str, b64data) < 0) {
       fprintf(stderr, "Failure decoding b64 string");
       return -1;
@@ -195,7 +195,6 @@ int invalidate(char *msg) {
   printf("page is read-only\n");
   char pgb64[PG_SIZE * 2] = {0};
   b64encode((const char *)pg, PG_SIZE, pgb64);
-  printf("page is b64-encoded\n");
   if (mprotect(pg, 1, PROT_NONE) != 0) {
     fprintf(stderr, "Invalidation of page addr %p failed\n", pg);
     return -1;
