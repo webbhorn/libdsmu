@@ -23,7 +23,7 @@ pingpong: pingpong.o $(OBJS)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	$(RM) *.o *~ $(MAIN)
+	$(RM) *.o *~ $(TESTS)
 
 depend:
 	$(SRCS)
