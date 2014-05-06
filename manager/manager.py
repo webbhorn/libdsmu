@@ -110,7 +110,7 @@ class ManagerServer:
           self.clients[user].send("INVALIDATE " + str(pagenumber))
 
     while not reduce(operator.and_, page_table_entry.invalidate_confirmations.values(), True):
-      time.sleep(.1)
+      pass
 
     # When all have confirmed, return
 
