@@ -205,7 +205,6 @@ int invalidate(char *msg) {
     fprintf(stderr, "Invalidation of page addr %p failed\n", pg);
     return -1;
   }
-  printf("page is unreadable, unwriteable\n");
   confirminvalidate_encoded(pgnum, pgb64);
   return 0;
 }

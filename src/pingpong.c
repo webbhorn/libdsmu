@@ -34,6 +34,8 @@ int main(int argc, char *argv[]) {
     temp = *ball;
   }
 
+  while(1);
+
   teardownlibdsmu();
   return 0;
 }

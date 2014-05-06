@@ -19,4 +19,13 @@ void setwaiting(int page, int val);
 
 int getwaiting(int page);
 
+#define SHRPOL_NONE (0)
+#define SHRPOL_INIT_ZERO (1 << 0)
+
+struct sharedregion {
+  uintptr_t start;
+  size_t len;
+  uint16_t policy;
+};
+
 #endif  // _LIBDSMU_H_
