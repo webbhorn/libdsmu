@@ -11,6 +11,7 @@
 #include "b64.h"
 #include "mem.h"
 #include "rpc.h"
+#include "libdsmu.h"
 
 // Socket state.
 int serverfd;
@@ -19,7 +20,7 @@ struct addrinfo hints;
 
 pthread_mutex_t sockl;
 
-extern volatile int waiting[MAX_SHARED_PAGES];
+//extern volatile int waiting[MAX_SHARED_PAGES];
 
 // Listen for manager messages and dispatch them.
 void *listenman(void *ptr) {
@@ -163,7 +164,10 @@ int handleconfirm(char *msg) {
   }
 
 
-  waiting[pgnum % MAX_SHARED_PAGES] = 0;
+  fprintf(stderr, "setting waiting on %d %d \n",pgnum, getwaiting(pgnum));
+  setwaiting(pgnum, 0);
+  fprintf(stderr, "set waiting on %d %d \n",pgnum, getwaiting(pgnum));
+  //waiting[pgnum % MAX_SHARED_PAGES] = 0;
   return 0;
 }
 

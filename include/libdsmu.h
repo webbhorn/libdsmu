@@ -15,4 +15,8 @@ int initlibdsmu(int port, uintptr_t starta, size_t len);
 
 int teardownlibdsmu(void);
 
+void setwaiting(int page, int val);
+
+int getwaiting(int page);
+
 #endif  // _LIBDSMU_H_
