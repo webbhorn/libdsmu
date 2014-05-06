@@ -5,6 +5,8 @@ from threading import Thread
 import time
 import operator
 
+DEBUG=False
+
 PORT = 4444
 NUMPAGES = 1000000
 MAXCONNREQUESTS = 5
@@ -35,21 +37,21 @@ class ManagerServer:
     # MAXCONNREQUESTS represents the number of outstanding clients waiting to
     # interact with the server before clients are turned away. It is 5 because
     # that is the normal default, but setting it to the # of clients is ok too.
-    print "[Manager Server] Waiting..."
+    if DEBUG: print "[Manager Server] Waiting..."
 
     while True:
       # A client exists as long as the ManagerServer has a TCP connection to it.
       # Therefore, when a client connects here, we make a new thread to handle
       # its requests.
       (clientSocket, address) = self.serverSocket.accept()
-      print "[Manager] Accepted client with address: " + str(address)
+      if DEBUG: print "[Manager] Accepted client with address: " + str(address)
 
       # Here, we just make a new thread to handle this client and run it, and
       # get back to waiting for new clients.
       clientThread = Thread(target = self.HandleClient, args = (clientSocket, ))
 
       client = clientSocket.getpeername()
-      print "[Manager] Client id " + str(client)
+      if DEBUG: print "[Manager] Client id " + str(client)
       self.AddClient(client, clientSocket)
 
       clientThread.start()
@@ -71,7 +73,7 @@ class ManagerServer:
       except:
         break
 
-      print "[Manager] " + str(client[1]) + " " + data[0:40]
+      if DEBUG: print "[Manager] " + str(client[1]) + " " + data[0:40]
       thread = Thread(target = self.ProcessMessage, args = (client, data))
       thread.start()
 
