@@ -48,7 +48,7 @@ int dispatch(char *msg) {
 
 // Send a message to the manager.
 int sendman(char *str, int len) {
-  printf("> %s\n", str);
+  printf("> %.40s\n", str);
   pthread_mutex_lock(&sockl);
   send(serverfd, str, len, 0);
   pthread_mutex_unlock(&sockl);
@@ -192,7 +192,6 @@ int invalidate(char *msg) {
     fprintf(stderr, "Invalidation of page addr %p failed\n", pg);
     return -1;
   }
-  printf("page is read-only\n");
   char pgb64[PG_SIZE * 2] = {0};
   b64encode((const char *)pg, PG_SIZE, pgb64);
   if (mprotect(pg, 1, PROT_NONE) != 0) {
