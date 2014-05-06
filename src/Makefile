@@ -4,18 +4,20 @@ CFLAGS = -Wall $(INCLUDES)
 LFLAGS =
 LIBS = -lb64 -lpthread
 
-SRCS = b64.c libdsmu.c main.c rpc.c
+TESTS = main pingpong
+SRCS = b64.c libdsmu.c rpc.c
 OBJS = $(SRCS:.c=.o)
-
-MAIN = main
 
 .PHONY: depend clean
 
-all: $(MAIN)
+all: $(TESTS)
 	@echo Build complete.
 
-$(MAIN): $(OBJS)
-	$(CC) $(CFLAGS) -o $(MAIN) $(OBJS) $(LFLAGS) $(LIBS)
+main: main.o $(OBJS)
+	$(CC) $(CFLAGS) -o $@ $< $(OBJS) $(LFLAGS) $(LIBS)
+
+pingpong: pingpong.o $(OBJS)
+	$(CC) $(CFLAGS) -o $@ $< $(OBJS) $(LFLAGS) $(LIBS)
 
 .c: .o
 	$(CC) $(CFLAGS) -c $< -o $@
