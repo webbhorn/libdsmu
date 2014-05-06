@@ -34,11 +34,12 @@ void *listenman(void *ptr) {
 
 // Handle newly arrived messages.
 int dispatch(char *msg) {
+#ifdef DEBUG
+  printf("< %.40s\n", msg);
+#endif  // DEBUG
   if (strstr(msg, "INVALIDATE") != NULL) {
-    printf("< %.40s\n", msg);
     invalidate(msg);
   } else if (strstr(msg, "REQUESTPAGE") != NULL) {
-    printf("< %.40s\n", msg);
     handleconfirm(msg);
   } else {
     printf("Undefined message.\n");
@@ -48,7 +49,9 @@ int dispatch(char *msg) {
 
 // Send a message to the manager.
 int sendman(char *str, int len) {
+#ifdef DEBUG
   printf("> %.40s\n", str);
+#endif  // DEBUG
   pthread_mutex_lock(&sockl);
   send(serverfd, str, len, 0);
   pthread_mutex_unlock(&sockl);
