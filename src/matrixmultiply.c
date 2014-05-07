@@ -85,8 +85,6 @@ int main(int argc, char *argv[]) {
   printf("Matrix C\n--------\n");
   print_matrix(*C);
 
-  while (1);
-
   teardownlibdsmu();
   return 0;
 }
