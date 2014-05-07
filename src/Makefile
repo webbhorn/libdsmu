@@ -4,7 +4,7 @@ CFLAGS = -Wall $(INCLUDES)
 LFLAGS =
 LIBS = -lb64 -lpthread
 
-TESTS = main pingpong
+TESTS = main pingpong pingpongpang
 SRCS = b64.c libdsmu.c rpc.c
 OBJS = $(SRCS:.c=.o)
 
@@ -17,6 +17,9 @@ main: main.o $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $< $(OBJS) $(LFLAGS) $(LIBS)
 
 pingpong: pingpong.o $(OBJS)
+	$(CC) $(CFLAGS) -o $@ $< $(OBJS) $(LFLAGS) $(LIBS)
+
+pingpongpang: pingpongpang.o $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $< $(OBJS) $(LFLAGS) $(LIBS)
 
 .c: .o
