@@ -62,14 +62,14 @@ int sendman(char *str, int len) {
 
 // Initialize socket with manager.
 // Return 0 on success.
-int initsocks(int port) {
+int initsocks(char *ip, int port) {
   char sport[5];
   snprintf(sport, 5, "%d", port);
   memset(&hints, 0, sizeof(hints));
   hints.ai_family = AF_INET;
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_flags = AI_PASSIVE;
-  if (getaddrinfo(NULL, sport, &hints, &resolvedAddr) < 0)
+  if (getaddrinfo(ip, sport, &hints, &resolvedAddr) < 0)
     return -2;
 
   serverfd = socket(resolvedAddr->ai_family, resolvedAddr->ai_socktype,

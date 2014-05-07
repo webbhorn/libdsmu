@@ -3,7 +3,7 @@
 
 int sendman(char *str, int len);
 
-int initsocks(int port);
+int initsocks(char *ip, int port);
 
 int teardownsocks(void);
 

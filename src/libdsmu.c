@@ -145,7 +145,7 @@ int addsharedregion(uintptr_t start, size_t len, int policy) {
 // Try to write from it -- expect handler to run and make it writeable.
 // Try to derefence NULL pointer -- expect handler to forward segfault to the
 // default handler, which should terminate the program.
-int initlibdsmu(int port, uintptr_t starta, size_t len) {
+int initlibdsmu(char *ip, int port, uintptr_t starta, size_t len) {
   int i;
   struct sigaction sa;
 
@@ -178,7 +178,7 @@ int initlibdsmu(int port, uintptr_t starta, size_t len) {
   }
 
   // Setup sockets.
-  initsocks(port);
+  initsocks(ip, port);
 
   // Spin up thread that listens for messages from manager.
   if ((pthread_create(&tlisten, NULL, listenman, NULL) != 0)) {

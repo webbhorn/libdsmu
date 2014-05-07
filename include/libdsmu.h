@@ -11,7 +11,7 @@
 // Shared memory will begin at starta and will include all pages that include
 // addresses in the range [starta, starta + len).
 //
-int initlibdsmu(int port, uintptr_t starta, size_t len);
+int initlibdsmu(char *ip, int port, uintptr_t starta, size_t len);
 
 int teardownlibdsmu(void);
 

@@ -27,15 +27,19 @@ void print_matrix(matrix_t m) {
 matrix_t A, B;
 
 int main(int argc, char *argv[]) {
-  if (argc < 4) {
-    printf("Usage: main MANAGER_PORT [1|2]\n");
+  if (argc < 5) {
+    printf("Usage: main MANAGER_IP MANAGER_PORT id[1|2|...|n] nodes[n]\n");
     return 1;
   }
 
   srand(SEED);
 
-  int port = atoi(argv[1]); 
-  initlibdsmu(port, 0x12340000, 4096 * 10);
+  char *ip = argv[1];
+  int port = atoi(argv[2]);
+  int id = atoi(argv[3]);
+  int n = atoi(argv[4]);
+
+  initlibdsmu(ip, port, 0x12340000, 4096 * 10);
   matrix_t *C = (matrix_t *) 0x12340000;
 
   int i, j, k;
@@ -47,7 +51,7 @@ int main(int argc, char *argv[]) {
   }
 
   for (i = 0; i < SIZE; i++) {
-    if ((i % atoi(argv[3])) != (atoi(argv[2]) % atoi(argv[3]))) {
+    if (((i % n) != (id % n))) {
       continue;
     }
     
