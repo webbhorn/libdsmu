@@ -16,6 +16,7 @@
 #include "mem.h"
 #include "rpc.h"
 
+pthread_mutex_t waitl;
 volatile int waiting[MAX_SHARED_PAGES];
 
 // FORMERLY IN RPC.C/RPC.H
@@ -168,7 +169,9 @@ int handleconfirm(char *msg) {
   }
 
 
+  pthread_mutex_lock(&waitl);
   waiting[pgnum % MAX_SHARED_PAGES] = 0;
+  pthread_mutex_unlock(&waitl);
   return 0;
 }
 
@@ -288,9 +291,13 @@ int writehandler(void *pg) {
     return -1;
   }
 
+  pthread_mutex_lock(&waitl);
   waiting[pgnum % MAX_SHARED_PAGES] = 1;
   while (waiting[pgnum % MAX_SHARED_PAGES] == 1)  {
+    pthread_mutex_unlock(&waitl);
+    pthread_mutex_lock(&waitl);
   }
+  pthread_mutex_unlock(&waitl);
 
   return 0;
 }
@@ -306,9 +313,13 @@ int readhandler(void *pg) {
   }
 
   // Wait for page message form server.
+  pthread_mutex_lock(&waitl);
   waiting[pgnum % MAX_SHARED_PAGES] = 1;
   while (waiting[pgnum % MAX_SHARED_PAGES] == 1)  {
+    pthread_mutex_unlock(&waitl);
+    pthread_mutex_lock(&waitl);
   }
+  pthread_mutex_unlock(&waitl);
 
   return 0;
 }
@@ -357,8 +368,11 @@ int initlibdsmu(int port, uintptr_t starta, size_t len) {
   }
 
   // Setup ptable.
+  pthread_mutex_init(&waitl, NULL);
   for (i = 0; i < MAX_SHARED_PAGES; i++) {
+    pthread_mutex_lock(&waitl);
     waiting[i] = 0;
+    pthread_mutex_unlock(&waitl);
   }
 
   // Setup shared regions.
@@ -390,6 +404,7 @@ int initlibdsmu(int port, uintptr_t starta, size_t len) {
 }
 
 int teardownlibdsmu(void) {
+  pthread_mutex_destroy(&waitl);
   teardownsocks();
   return 0;
 }
