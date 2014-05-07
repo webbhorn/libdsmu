@@ -6,26 +6,27 @@
 #include "mem.h"
 
 int main(int argc, char *argv[]) {
-  if (argc < 3) {
-    printf("Usage: main MANAGER_PORT [1|2]\n");
+  if (argc < 4) {
+    printf("Usage: main MANAGER_IP MANAGER_PORT [1|2]\n");
     return 1;
   }
 
   int * ball = (int *) 0x12340000;
 
-  int port = atoi(argv[1]); 
-  initlibdsmu(port, 0x12340000, 4096 * 10);
+  char *ip = argv[1];
+  int port = atoi(argv[2]); 
+  initlibdsmu(ip, port, 0x12340000, 4096 * 10);
 
   int temp = *ball;
 
   while ((temp) < 20) {
-    if ((atoi(argv[2]) == 1) && ((temp) % 2 == 0)) {
-      printf("[PINGPONG] ball = %d me = %d\n", temp, atoi(argv[2]));
+    if ((atoi(argv[3]) == 1) && ((temp) % 2 == 0)) {
+      printf("[PINGPONG] ball = %d me = %d\n", temp, atoi(argv[3]));
       temp += 1;
       *ball = temp;
       continue;
-    } else if ((atoi(argv[2]) == 2) && ((temp) % 2 == 1)) {
-      printf("[PINGPONG] ball = %d me = %d\n", temp, atoi(argv[2]));
+    } else if ((atoi(argv[3]) == 2) && ((temp) % 2 == 1)) {
+      printf("[PINGPONG] ball = %d me = %d\n", temp, atoi(argv[3]));
       temp += 1;
       *ball = temp;
       continue;
