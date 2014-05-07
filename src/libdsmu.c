@@ -181,7 +181,7 @@ int initlibdsmu(int port, uintptr_t starta, size_t len) {
   }
 
   // Setup sockets.
-  initsocks(port);
+  initsocks(port, waiting);
 
   // Spin up thread that listens for messages from manager.
   if ((pthread_create(&tlisten, NULL, listenman, NULL) != 0)) {

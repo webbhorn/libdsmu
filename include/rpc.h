@@ -3,7 +3,7 @@
 
 int sendman(char *str, int len);
 
-int initsocks(int port);
+int initsocks(int port, volatile int waitingap[MAX_SHARED_PAGES]);
 
 int teardownsocks(void);
 

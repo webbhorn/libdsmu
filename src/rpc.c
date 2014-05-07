@@ -19,7 +19,7 @@ struct addrinfo hints;
 
 pthread_mutex_t sockl;
 
-extern volatile int waiting[MAX_SHARED_PAGES];
+volatile int *waitinga;
 
 // Listen for manager messages and dispatch them.
 void *listenman(void *ptr) {
@@ -60,7 +60,7 @@ int sendman(char *str, int len) {
 
 // Initialize socket with manager.
 // Return 0 on success.
-int initsocks(int port) {
+int initsocks(int port, volatile int waitingap[MAX_SHARED_PAGES]) {
   char sport[5];
   snprintf(sport, 5, "%d", port);
   memset(&hints, 0, sizeof(hints));
@@ -81,6 +81,8 @@ int initsocks(int port) {
   if (pthread_mutex_init(&sockl, NULL) != 0) {
     return -3;
   }
+
+  waitinga = waitingap;
 
   return 0;
 }
@@ -163,7 +165,7 @@ int handleconfirm(char *msg) {
   }
 
 
-  waiting[pgnum % MAX_SHARED_PAGES] = 0;
+  waitinga[pgnum % MAX_SHARED_PAGES] = 0;
   return 0;
 }
 
