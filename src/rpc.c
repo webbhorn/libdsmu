@@ -19,7 +19,9 @@ struct addrinfo hints;
 
 pthread_mutex_t sockl;
 
-extern volatile int waiting[MAX_SHARED_PAGES];
+extern pthread_condattr_t waitca;
+extern pthread_cond_t waitc;
+extern pthread_mutex_t waitm;
 
 // Listen for manager messages and dispatch them.
 void *listenman(void *ptr) {
@@ -163,7 +165,7 @@ int handleconfirm(char *msg) {
   }
 
 
-  waiting[pgnum % MAX_SHARED_PAGES] = 0;
+  pthread_cond_signal(&waitc);
   return 0;
 }
 

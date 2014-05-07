@@ -27,7 +27,9 @@ static struct sigaction oldact;
 int nextshrp;
 struct sharedregion shrp[MAX_SHARED_REGIONS];
 
-volatile int waiting[MAX_SHARED_PAGES];
+pthread_condattr_t waitca;
+pthread_cond_t waitc;
+pthread_mutex_t waitm;
 
 static pthread_t tlisten;
 
@@ -91,9 +93,7 @@ int writehandler(void *pg) {
     return -1;
   }
 
-  waiting[pgnum % MAX_SHARED_PAGES] = 1;
-  while (waiting[pgnum % MAX_SHARED_PAGES] == 1)  {
-  }
+  pthread_cond_wait(&waitc, &waitm);
 
   return 0;
 }
@@ -109,9 +109,7 @@ int readhandler(void *pg) {
   }
 
   // Wait for page message form server.
-  waiting[pgnum % MAX_SHARED_PAGES] = 1;
-  while (waiting[pgnum % MAX_SHARED_PAGES] == 1)  {
-  }
+  pthread_cond_wait(&waitc, &waitm);
 
   return 0;
 }
@@ -159,10 +157,9 @@ int initlibdsmu(int port, uintptr_t starta, size_t len) {
     fprintf(stderr, "sigaction failed\n");
   }
 
-  // Setup ptable.
-  for (i = 0; i < MAX_SHARED_PAGES; i++) {
-    waiting[i] = 0;
-  }
+  pthread_condattr_init(&waitca);
+  pthread_cond_init(&waitc, &waitca);
+  pthread_mutex_init(&waitm, NULL);
 
   // Setup shared regions.
   nextshrp = 0;
@@ -193,7 +190,12 @@ int initlibdsmu(int port, uintptr_t starta, size_t len) {
 }
 
 int teardownlibdsmu(void) {
+  pthread_condattr_destroy(&waitca);
+  pthread_cond_destroy(&waitc);
+  pthread_mutex_destroy(&waitm);
+
   teardownsocks();
+
   return 0;
 }
 
