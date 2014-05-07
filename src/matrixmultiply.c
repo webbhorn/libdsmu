@@ -1,11 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/time.h>
 #include <unistd.h>
 
 #include "libdsmu.h"
 #include "mem.h"
 
-#define SIZE 20
+#define SIZE 300
 #define SEED 69
 
 typedef int matrix_t [SIZE][SIZE];
@@ -39,7 +40,12 @@ int main(int argc, char *argv[]) {
   int id = atoi(argv[3]);
   int n = atoi(argv[4]);
 
-  initlibdsmu(ip, port, 0x12340000, 4096 * 10);
+  initlibdsmu(ip, port, 0x12340000, 4096 * 10000);
+
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  double start_ms = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000;
+
   matrix_t *C = (matrix_t *) 0x12340000;
 
   int i, j, k;
@@ -63,8 +69,14 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  gettimeofday(&tv, NULL);
+  double end_ms = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000;
+
+  printf("TOTAL TIME (ms): %lf\n", (end_ms - start_ms));
   printf("done\n");
-  scanf(" ");
+
+  printf("sleeping for 10 seconds...\n");
+  sleep(20);
 
   printf("Matrix A\n--------\n");
   print_matrix(A);
