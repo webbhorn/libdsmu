@@ -18,6 +18,8 @@ int teardownlibdsmu(void);
 #define SHRPOL_NONE (0)
 #define SHRPOL_INIT_ZERO (1 << 0)
 
+int addsharedregion(uintptr_t starta, size_t len, int policy);
+
 struct sharedregion {
   uintptr_t start;
   size_t len;
