@@ -116,6 +116,8 @@ void confirminvalidate_encoded(int pgnum, char *pgb64) {
 }
 
 int handleconfirm(char *msg) {
+  pthread_mutex_lock(&waitm); // Acquire mutex for condition variable.
+
   char *spgnum = strstr(msg, "ION ") + 4;
   int pgnum = atoi(spgnum);
   void *pg = (void *)PGNUM_TO_PGADDR((uintptr_t)pgnum);
@@ -130,7 +132,7 @@ int handleconfirm(char *msg) {
     nspaces = 0;
     while (nspaces < 4) {
       if (b64str[0] == ' ') {
-	nspaces++;
+	      nspaces++;
       }
       b64str++;
     }
@@ -164,8 +166,9 @@ int handleconfirm(char *msg) {
     }
   }
 
+  pthread_cond_signal(&waitc); // Signal to the page handler that they can now operate.
 
-  pthread_cond_signal(&waitc);
+  pthread_mutex_unlock(&waitm); // Unlock, allow another page to be handled.
   return 0;
 }
 

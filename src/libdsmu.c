@@ -85,32 +85,35 @@ void pgfaultsh(int sig, siginfo_t *info, ucontext_t *ctx) {
 
 // Connect to manager, etc.
 // pg should be page-aligned.
-// For now, just change permissions to R+W.
 // Return 0 on success.
 int writehandler(void *pg) {
+  pthread_mutex_lock(&waitm); // Need to lock to use our condition variable.
+  
   int pgnum = PGADDR_TO_PGNUM((uintptr_t) pg);
   if (requestpage(pgnum, "WRITE") != 0) {
     return -1;
   }
 
-  pthread_cond_wait(&waitc, &waitm);
-
+  pthread_cond_wait(&waitc, &waitm); // Wait for page message from server.
+  
+  pthread_mutex_unlock(&waitm); // Unlock, allow another handler to run.
   return 0;
 }
 
 // Connect to manager, etc.
 // pg should be page-aligned.
-// For now, just change permissions to R-.
 // Return 0 on success.
 int readhandler(void *pg) {
+  pthread_mutex_lock(&waitm); // Need to lock to use our condition variable.
+
   int pgnum = PGADDR_TO_PGNUM((uintptr_t) pg);
   if (requestpage(pgnum, "READ") != 0) {
     return -1;
   }
 
-  // Wait for page message form server.
-  pthread_cond_wait(&waitc, &waitm);
+  pthread_cond_wait(&waitc, &waitm); // Wait for page message from server.
 
+  pthread_mutex_unlock(&waitm); // Unlock, allow another handler to run.
   return 0;
 }
 
