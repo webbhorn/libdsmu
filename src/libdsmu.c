@@ -91,6 +91,7 @@ int writehandler(void *pg) {
   
   int pgnum = PGADDR_TO_PGNUM((uintptr_t) pg);
   if (requestpage(pgnum, "WRITE") != 0) {
+    pthread_mutex_unlock(&waitm);
     return -1;
   }
 
@@ -108,6 +109,7 @@ int readhandler(void *pg) {
 
   int pgnum = PGADDR_TO_PGNUM((uintptr_t) pg);
   if (requestpage(pgnum, "READ") != 0) {
+    pthread_mutex_unlock(&waitm);
     return -1;
   }
 
