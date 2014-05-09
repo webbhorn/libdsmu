@@ -68,16 +68,27 @@ int initsocks(char *ip, int port) {
   memset(&hints, 0, sizeof(hints));
   hints.ai_family = AF_INET;
   hints.ai_socktype = SOCK_STREAM;
-  if (getaddrinfo(ip, sport, &hints, &resolvedAddr) < 0)
+  if (getaddrinfo(ip, sport, &hints, &resolvedAddr) < 0) {
+    fprintf(stderr, "Could not resolve the IP address provided.\n");
     return -2;
+  }
 
   serverfd = socket(resolvedAddr->ai_family, resolvedAddr->ai_socktype,
                     resolvedAddr->ai_protocol);
-  if (serverfd < 0)
+  if (serverfd < 0) {
+    fprintf(stderr, "Socket file descriptor was invalid.\n");
+    freeaddrinfo(resolvedAddr); // Free the address struct we created on error.
     return -2;
+ }
 
-  if (connect(serverfd, resolvedAddr->ai_addr, resolvedAddr->ai_addrlen) < 0)
+  if (connect(serverfd, resolvedAddr->ai_addr,
+    resolvedAddr->ai_addrlen) < 0) {
+    fprintf(stderr, "Could not connect to the IP address provided.\n");
+    freeaddrinfo(resolvedAddr);
     return -2;
+  }
+
+  freeaddrinfo(resolvedAddr); // Done with the address struct, free it.
 
   if (pthread_mutex_init(&sockl, NULL) != 0) {
     return -3;
