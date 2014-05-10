@@ -32,7 +32,7 @@ class ManagerServer:
     self.serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
   def Listen(self):
-    self.serverSocket.bind(('localhost', self.port))
+    self.serverSocket.bind(('0.0.0.0', self.port))
     self.serverSocket.listen(MAXCONNREQUESTS)
     # MAXCONNREQUESTS represents the number of outstanding clients waiting to
     # interact with the server before clients are turned away. It is 5 because
