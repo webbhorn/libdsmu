@@ -76,14 +76,16 @@ int main(int argc, char *argv[]) {
   printf("done\n");
 
   printf("sleeping for 10 seconds...\n");
-  sleep(20);
+  sleep(10);
 
+  /*
   printf("Matrix A\n--------\n");
   print_matrix(A);
   printf("Matrix B\n--------\n");
   print_matrix(B);
   printf("Matrix C\n--------\n");
   print_matrix(*C);
+  */
 
   teardownlibdsmu();
   return 0;
