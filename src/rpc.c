@@ -20,9 +20,9 @@ struct addrinfo hints;
 
 pthread_mutex_t sockl;
 
-extern pthread_condattr_t waitca;
-extern pthread_cond_t waitc;
-extern pthread_mutex_t waitm;
+extern pthread_condattr_t waitca[MAX_SHARED_PAGES];
+extern pthread_cond_t waitc[MAX_SHARED_PAGES];
+extern pthread_mutex_t waitm[MAX_SHARED_PAGES];
 
 // Listen for manager messages and dispatch them.
 void *listenman(void *ptr) {
@@ -153,14 +153,15 @@ void confirminvalidate_encoded(int pgnum, char *pgb64) {
 }
 
 int handleconfirm(char *msg) {
-  pthread_mutex_lock(&waitm); // Acquire mutex for condition variable.
-
   char *spgnum = strstr(msg, "ION ") + 4;
   int pgnum = atoi(spgnum);
   void *pg = (void *)PGNUM_TO_PGADDR((uintptr_t)pgnum);
 
   int err;
   int nspaces;
+
+  // Acquire mutex for condition variable.
+  pthread_mutex_lock(&waitm[pgnum % MAX_SHARED_PAGES]);
 
   // If not using existing page, decode the b64 data into the page.  The b64
   // string begins after the 4th ' ' character in msg.
@@ -203,9 +204,11 @@ int handleconfirm(char *msg) {
     }
   }
 
-  pthread_cond_signal(&waitc); // Signal to the page handler that they can now operate.
+  // Signal to the page handler that they can now run.
+  pthread_cond_signal(&waitc[pgnum % MAX_SHARED_PAGES]);
 
-  pthread_mutex_unlock(&waitm); // Unlock, allow another page to be handled.
+  // Unlock to allow another page fault to be handled.
+  pthread_mutex_unlock(&waitm[pgnum % MAX_SHARED_PAGES]); 
   return 0;
 }
 

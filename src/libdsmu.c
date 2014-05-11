@@ -31,9 +31,9 @@ static struct sigaction oldact;
 int nextshrp;
 struct sharedregion shrp[MAX_SHARED_REGIONS];
 
-pthread_condattr_t waitca;
-pthread_cond_t waitc;
-pthread_mutex_t waitm;
+pthread_condattr_t waitca[MAX_SHARED_PAGES];
+pthread_cond_t waitc[MAX_SHARED_PAGES];
+pthread_mutex_t waitm[MAX_SHARED_PAGES];
 
 static pthread_t tlisten;
 
@@ -90,34 +90,38 @@ void pgfaultsh(int sig, siginfo_t *info, ucontext_t *ctx) {
 // Connect to manager, etc.
 // pg should be page-aligned.
 // Return 0 on success.
-int writehandler(void *pg) {
+int writehandler(void *pg) { 
   struct timeval tv;
   gettimeofday(&tv, NULL);
   double start_us = (tv.tv_sec) * 1000000 + (tv.tv_usec);
 
-  pthread_mutex_lock(&waitm); // Need to lock to use our condition variable.
+  int pgnum = PGADDR_TO_PGNUM((uintptr_t) pg);
+  pthread_mutex_lock(&waitm[pgnum % MAX_SHARED_PAGES]); // Need to lock to use our condition variable.
+
   gettimeofday(&tv, NULL);
   double end_us = (tv.tv_sec) * 1000000 + (tv.tv_usec);
   printf("[%d] [WF %d] mutex acquire took : %lfus\n", id, wfcnt, (end_us - start_us));
   start_us = (tv.tv_sec) * 1000000 + (tv.tv_usec);
   
-  int pgnum = PGADDR_TO_PGNUM((uintptr_t) pg);
   if (requestpage(pgnum, "WRITE") != 0) {
-    pthread_mutex_unlock(&waitm);
+    pthread_mutex_unlock(&waitm[pgnum % MAX_SHARED_PAGES]);
     return -1;
   }
+
   gettimeofday(&tv, NULL);
   end_us = (tv.tv_sec) * 1000000 + (tv.tv_usec);
   printf("[%d] [WF %d] request page msg send took : %lfus\n", id, wfcnt, (end_us - start_us));
   start_us = (tv.tv_sec) * 1000000 + (tv.tv_usec);
 
-  pthread_cond_wait(&waitc, &waitm); // Wait for page message from server.
+  pthread_cond_wait(&waitc[pgnum % MAX_SHARED_PAGES],
+    &waitm[pgnum % MAX_SHARED_PAGES]); // Wait for page message from server.
+  
   gettimeofday(&tv, NULL);
   end_us = (tv.tv_sec) * 1000000 + (tv.tv_usec);
   printf("[%d] [WF %d] wait for page data took : %lfus\n", id, wfcnt, (end_us - start_us));
   start_us = (tv.tv_sec) * 1000000 + (tv.tv_usec);
- 
-  pthread_mutex_unlock(&waitm); // Unlock, allow another handler to run.
+     
+  pthread_mutex_unlock(&waitm[pgnum % MAX_SHARED_PAGES]); // Unlock, allow another handler to run.
 
   wfcnt++;
   return 0;
@@ -131,30 +135,34 @@ int readhandler(void *pg) {
   gettimeofday(&tv, NULL);
   double start_us = (tv.tv_sec) * 1000000 + (tv.tv_usec);
 
-  pthread_mutex_lock(&waitm); // Need to lock to use our condition variable.
+  int pgnum = PGADDR_TO_PGNUM((uintptr_t) pg);
+  pthread_mutex_lock(&waitm[pgnum % MAX_SHARED_PAGES]); // Need to lock to use our condition variable.
+
   gettimeofday(&tv, NULL);
   double end_us = (tv.tv_sec) * 1000000 + (tv.tv_usec);
   printf("[%d] [RF %d] mutex acquire took: %lfus\n", id, rfcnt, (end_us - start_us));
   start_us = (tv.tv_sec) * 1000000 + (tv.tv_usec);
 
-  int pgnum = PGADDR_TO_PGNUM((uintptr_t) pg);
   if (requestpage(pgnum, "READ") != 0) {
-    pthread_mutex_unlock(&waitm);
+    pthread_mutex_unlock(&waitm[pgnum % MAX_SHARED_PAGES]);
     return -1;
   }
+
   gettimeofday(&tv, NULL);
   end_us = (tv.tv_sec) * 1000000 + (tv.tv_usec);
   printf("[%d] [RF %d] read request took: %lfus\n", id, rfcnt, (end_us - start_us));
   start_us = (tv.tv_sec) * 1000000 + (tv.tv_usec);
 
-  pthread_cond_wait(&waitc, &waitm); // Wait for page message from server.
+  pthread_cond_wait(&waitc[pgnum % MAX_SHARED_PAGES],
+    &waitm[pgnum % MAX_SHARED_PAGES]); // Wait for page message from server.
+
   gettimeofday(&tv, NULL);
   end_us = (tv.tv_sec) * 1000000 + (tv.tv_usec);
   printf("[%d] [RF %d] wait for response took: %lfus\n", id, rfcnt, (end_us - start_us));
   start_us = (tv.tv_sec) * 1000000 + (tv.tv_usec);
 
-  pthread_mutex_unlock(&waitm); // Unlock, allow another handler to run.
-
+  pthread_mutex_unlock(&waitm[pgnum % MAX_SHARED_PAGES]); // Unlock, allow another handler to run.
+  
   rfcnt++;
   return 0;
 }
@@ -205,9 +213,12 @@ int initlibdsmu(char *ip, int port, uintptr_t starta, size_t len) {
     fprintf(stderr, "sigaction failed\n");
   }
 
-  pthread_condattr_init(&waitca);
-  pthread_cond_init(&waitc, &waitca);
-  pthread_mutex_init(&waitm, NULL);
+  // Make condition variables/mutexes for each page.
+  for (i = 0; i < MAX_SHARED_PAGES; i++) {
+    pthread_condattr_init(&waitca[i]);
+    pthread_cond_init(&waitc[i], &waitca[i]);
+    pthread_mutex_init(&waitm[i], NULL);
+  }
 
   // Setup shared regions.
   nextshrp = 0;
@@ -238,9 +249,14 @@ int initlibdsmu(char *ip, int port, uintptr_t starta, size_t len) {
 }
 
 int teardownlibdsmu(void) {
-  pthread_condattr_destroy(&waitca);
-  pthread_cond_destroy(&waitc);
-  pthread_mutex_destroy(&waitm);
+  int i;
+
+  // Clear condition variables/mutexes for each page.
+  for (i = 0; i < MAX_SHARED_PAGES; i++) {
+    pthread_condattr_destroy(&waitca[i]);
+    pthread_cond_destroy(&waitc[i]);
+    pthread_mutex_destroy(&waitm[i]);
+  }
 
   teardownsocks();
 
