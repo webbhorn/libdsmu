@@ -6,7 +6,7 @@
 #include "libdsmu.h"
 #include "mem.h"
 
-#define SIZE 2048
+#define SIZE 950
 #define SEED 69
 
 typedef int matrix_t [SIZE][SIZE];
@@ -78,9 +78,7 @@ int main(int argc, char *argv[]) {
   printf("done\n");
 
   printf("sleeping for 10 seconds...\n");
-
-  while (1)
-    ;
+  sleep(10);
 
   /*
   printf("Matrix A\n--------\n");
