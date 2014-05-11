@@ -4,7 +4,7 @@ CFLAGS = -Wall $(INCLUDES)
 LFLAGS =
 LIBS = -lb64 -lpthread
 
-TESTS = main pingpong pingpongpang matrixmultiply
+TESTS = main pingpong pingpongpang matrixmultiply matrixmultiply2
 SRCS = b64.c libdsmu.c rpc.c
 OBJS = $(SRCS:.c=.o)
 
@@ -27,6 +27,9 @@ pingpongpang: pingpongpang.o $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $< $(OBJS) $(LFLAGS) $(LIBS)
 
 matrixmultiply: matrixmultiply.o $(OBJS)
+	$(CC) $(CFLAGS) -o $@ $< $(OBJS) $(LFLAGS) $(LIBS)
+
+matrixmultiply2: matrixmultiply2.o $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $< $(OBJS) $(LFLAGS) $(LIBS)
 
 .c: .o
