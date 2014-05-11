@@ -76,7 +76,9 @@ int main(int argc, char *argv[]) {
   printf("done\n");
 
   printf("sleeping for 10 seconds...\n");
-  sleep(10);
+
+  while (1)
+    ;
 
   /*
   printf("Matrix A\n--------\n");
