@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <sys/time.h>
 #include <ucontext.h>
 
 #include "b64.h"
@@ -87,6 +88,10 @@ void pgfaultsh(int sig, siginfo_t *info, ucontext_t *ctx) {
 // pg should be page-aligned.
 // Return 0 on success.
 int writehandler(void *pg) {
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  double start_ms = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000;
+
   pthread_mutex_lock(&waitm); // Need to lock to use our condition variable.
   
   int pgnum = PGADDR_TO_PGNUM((uintptr_t) pg);
@@ -98,6 +103,10 @@ int writehandler(void *pg) {
   pthread_cond_wait(&waitc, &waitm); // Wait for page message from server.
   
   pthread_mutex_unlock(&waitm); // Unlock, allow another handler to run.
+
+  gettimeofday(&tv, NULL);
+  double end_ms = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000;
+  printf("write fault took: %lfms\n", (end_ms - start_ms));
   return 0;
 }
 
@@ -105,6 +114,10 @@ int writehandler(void *pg) {
 // pg should be page-aligned.
 // Return 0 on success.
 int readhandler(void *pg) {
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  double start_ms = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000;
+
   pthread_mutex_lock(&waitm); // Need to lock to use our condition variable.
 
   int pgnum = PGADDR_TO_PGNUM((uintptr_t) pg);
@@ -116,6 +129,10 @@ int readhandler(void *pg) {
   pthread_cond_wait(&waitc, &waitm); // Wait for page message from server.
 
   pthread_mutex_unlock(&waitm); // Unlock, allow another handler to run.
+
+  gettimeofday(&tv, NULL);
+  double end_ms = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000;
+  printf("read fault took: %lfms\n", (end_ms - start_ms));
   return 0;
 }
 
