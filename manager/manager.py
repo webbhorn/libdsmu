@@ -66,21 +66,24 @@ class ManagerServer:
     # running in a new thread, handle the client
     client = clientSocket.getpeername()
     while True:
-
       try:
-        data = clientSocket.recv(7000)
+        data = clientSocket.recv(10, socket.MSG_PEEK)
+        length = int(data.split(" ")[0])
+        lengthoflength = data.find(" ") + 1
+        data = clientSocket.recv(length + lengthoflength, socket.MSG_WAITALL)
         if not data: break
       except:
         break
 
       if DEBUG: print "[Manager] " + str(client[1]) + " " + data[0:40]
-      thread = Thread(target = self.ProcessMessage, args = (client, data))
+      thread = Thread(target = self.ProcessMessage, args = (client, data.split(" ",1)[1]))
       thread.start()
 
     clientSocket.close()
 
 
   def ProcessMessage(self, client, data):
+    print "procesing "+ data
     args = data.split(" ")
 
     if args[0] == "REQUESTPAGE":
@@ -89,7 +92,7 @@ class ManagerServer:
       b64_encoded_data = args[3] if len(args) > 3 else ""
       self.InvalidateConfirmation(client, int(args[2]) % NUMPAGES, b64_encoded_data)
     else:
-      print "FUCK BAD PROTOCOL"
+      print "FUCK BAD PROTOCOL " + str(args[0])
 
 
   def AddClient(self, client, socket):
@@ -107,9 +110,9 @@ class ManagerServer:
     for user in page_table_entry.users:
       if user != client:
         if getpage:
-          self.clients[user].send("INVALIDATE " + str(pagenumber) + " PAGEDATA")
+          self.Send(user, "INVALIDATE " + str(pagenumber) + " PAGEDATA")
         else:
-          self.clients[user].send("INVALIDATE " + str(pagenumber))
+          self.Send(user, "INVALIDATE " + str(pagenumber))
 
     while not reduce(operator.and_, page_table_entry.invalidate_confirmations.values(), True):
       pass
@@ -125,8 +128,12 @@ class ManagerServer:
       page_table_entry.b64_encoded_page = data
 
   def SendConfirmation(self, client, pagenumber, permission, b64_encoded_page):
+    self.Send(client, "REQUESTPAGE " + permission + " CONFIRMATION " + str(pagenumber) + " " + str(b64_encoded_page))
+  
+  def Send(self, client, msg):
     socket = self.clients[client]
-    socket.send("REQUESTPAGE " + permission + " CONFIRMATION " + str(pagenumber) + " " + str(b64_encoded_page))
+    msg = str(len(msg)) + " " + msg
+    socket.send(msg)
 
   def RequestPage(self, client, pagenumber, permission):
     # Invalidate page with other clients (if necessary)
