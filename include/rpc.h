@@ -1,7 +1,7 @@
 #ifndef _RPC_H_
 #define _RPC_H_
 
-int sendman(char *str, int len);
+int sendman(char *str);
 
 int initsocks(char *ip, int port);
 

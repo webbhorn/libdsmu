@@ -1,3 +1,4 @@
+#include <err.h>
 #include <fcntl.h>
 #include <netdb.h>
 #include <pthread.h>
@@ -25,12 +26,31 @@ extern pthread_mutex_t waitm;
 
 // Listen for manager messages and dispatch them.
 void *listenman(void *ptr) {
+  int ret;
   printf("Listening...\n");
   while (1) {
-    char buf[7000] = {0};
-    if (recv(serverfd, (void *)buf, 7000, 0) > 0) {
-        dispatch(buf);
-    }
+    // See how long the payload (actualy message) is by peeking.
+    char peekstr[20] = {0};
+    ret = recv(serverfd, peekstr, 10, MSG_PEEK | MSG_WAITALL);
+    if (ret != 10)
+      err(1, "Could not peek into next packet's size");
+    int payloadlen = atoi(peekstr);
+
+    // Compute size of header (the length string).
+    int headerlen;
+    char *p = peekstr;
+    for (headerlen = 1; *p != ' '; p++)
+      headerlen++;
+
+    // Read the entire unit (header + payload) from the socket.
+    char msg[10000] = {0};
+    ret = recv(serverfd, msg, headerlen + payloadlen, MSG_WAITALL);
+    if (ret != headerlen + payloadlen)
+      err(1, "Could not read entire unit from socket");
+
+    const char s[] = " ";
+    char *payload = strstr(msg, s) + 1;
+    dispatch(payload);
   }
 }
 
@@ -50,12 +70,19 @@ int dispatch(char *msg) {
 }
 
 // Send a message to the manager.
-int sendman(char *str, int len) {
+int sendman(char *str) {
+  int ret;
+
 #ifdef DEBUG
   printf("> %.40s\n", str);
 #endif  // DEBUG
+
   pthread_mutex_lock(&sockl);
-  send(serverfd, str, len, 0);
+  char msg[10000];
+  sprintf(msg, "%zu %s", strlen(str), str);
+  ret = send(serverfd, msg, strlen(msg), 0);
+  if (ret != strlen(msg))
+    err(1, "Could not send the message");
   pthread_mutex_unlock(&sockl);
   return 0;
 }
@@ -109,20 +136,20 @@ int teardownsocks(void) {
 void confirminvalidate(int pgnum) {
   char msg[100] = {0};
   snprintf(msg, 100, "INVALIDATE CONFIRMATION %d", pgnum);
-  sendman(msg, strlen(msg));
+  sendman(msg);
 }
 
 // Return 0 on success.
 int requestpage(int pgnum, char *type) {
   char msg[100] = {0};
   snprintf(msg, 100, "REQUESTPAGE %s %d", type, pgnum);
-  return sendman(msg, strlen(msg));
+  return sendman(msg);
 }
 
 void confirminvalidate_encoded(int pgnum, char *pgb64) {
   char msg[10000] = {0};
   snprintf(msg, 100 + strlen(pgb64), "INVALIDATE CONFIRMATION %d %s", pgnum, pgb64);
-  sendman(msg, strlen(msg));
+  sendman(msg);
 }
 
 int handleconfirm(char *msg) {
