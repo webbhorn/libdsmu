@@ -6,7 +6,7 @@
 #include "libdsmu.h"
 #include "mem.h"
 
-#define SIZE 32
+#define SIZE 2048
 #define SEED 69
 
 typedef int matrix_t [SIZE][SIZE];
