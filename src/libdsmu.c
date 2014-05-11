@@ -19,6 +19,7 @@ int writehandler(void *pg);
 int readhandler(void *pg);
 void pgfaultsh(int sig, siginfo_t *info, ucontext_t *ctx);
 
+extern int id;  // For timing debug output.
 
 // Signal handler state.
 static struct sigaction oldact;
@@ -106,7 +107,7 @@ int writehandler(void *pg) {
 
   gettimeofday(&tv, NULL);
   double end_ms = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000;
-  printf("write fault took: %lfms\n", (end_ms - start_ms));
+  printf("[%d] write fault took: %lfms\n", id, (end_ms - start_ms));
   return 0;
 }
 
@@ -132,7 +133,7 @@ int readhandler(void *pg) {
 
   gettimeofday(&tv, NULL);
   double end_ms = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000;
-  printf("read fault took: %lfms\n", (end_ms - start_ms));
+  printf("[%d] read fault took: %lfms\n", id, (end_ms - start_ms));
   return 0;
 }
 

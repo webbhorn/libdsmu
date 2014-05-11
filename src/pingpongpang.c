@@ -5,6 +5,8 @@
 #include "libdsmu.h"
 #include "mem.h"
 
+int id;
+
 int main(int argc, char *argv[]) {
   if (argc < 4) {
     printf("Usage: main MANAGER_IP MANAGER_PORT [1|2|3]\n");

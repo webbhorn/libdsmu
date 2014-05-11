@@ -11,6 +11,8 @@
 
 typedef int matrix_t [SIZE][SIZE];
 
+int id;
+
 int randint() {
   return rand() % 10;
 }
@@ -37,7 +39,7 @@ int main(int argc, char *argv[]) {
 
   char *ip = argv[1];
   int port = atoi(argv[2]);
-  int id = atoi(argv[3]);
+  id = atoi(argv[3]);
   int n = atoi(argv[4]);
 
   initlibdsmu(ip, port, 0x12340000, 4096 * 10000);

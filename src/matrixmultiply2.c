@@ -27,6 +27,8 @@ void print_matrix(matrix_t m) {
 
 matrix_t A, B;
 
+int id;
+
 int main(int argc, char *argv[]) {
   if (argc < 5) {
     printf("Usage: main MANAGER_IP MANAGER_PORT id[1|2|...|n] nodes[n]\n");
@@ -37,7 +39,7 @@ int main(int argc, char *argv[]) {
 
   char *ip = argv[1];
   int port = atoi(argv[2]);
-  int id = atoi(argv[3]);
+  id = atoi(argv[3]);
   int n = atoi(argv[4]);
 
   initlibdsmu(ip, port, 0x12340000, 4096 * 10000);

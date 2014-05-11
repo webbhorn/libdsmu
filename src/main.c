@@ -4,6 +4,8 @@
 #include "libdsmu.h"
 #include "mem.h"
 
+int id;
+
 int main(int argc, char *argv[]) {
 
   if (argc < 3) {
