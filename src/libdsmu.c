@@ -20,6 +20,8 @@ int readhandler(void *pg);
 void pgfaultsh(int sig, siginfo_t *info, ucontext_t *ctx);
 
 extern int id;  // For timing debug output.
+int rfcnt;
+int wfcnt;
 
 // Signal handler state.
 static struct sigaction oldact;
@@ -91,23 +93,33 @@ void pgfaultsh(int sig, siginfo_t *info, ucontext_t *ctx) {
 int writehandler(void *pg) {
   struct timeval tv;
   gettimeofday(&tv, NULL);
-  double start_ms = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000;
+  double start_us = (tv.tv_sec) * 1000000 + (tv.tv_usec);
 
   pthread_mutex_lock(&waitm); // Need to lock to use our condition variable.
+  gettimeofday(&tv, NULL);
+  double end_us = (tv.tv_sec) * 1000000 + (tv.tv_usec);
+  printf("[%d] [WF %d] mutex acquire took : %lfus\n", id, wfcnt, (end_us - start_us));
+  start_us = (tv.tv_sec) * 1000000 + (tv.tv_usec);
   
   int pgnum = PGADDR_TO_PGNUM((uintptr_t) pg);
   if (requestpage(pgnum, "WRITE") != 0) {
     pthread_mutex_unlock(&waitm);
     return -1;
   }
+  gettimeofday(&tv, NULL);
+  end_us = (tv.tv_sec) * 1000000 + (tv.tv_usec);
+  printf("[%d] [WF %d] request page msg send took : %lfus\n", id, wfcnt, (end_us - start_us));
+  start_us = (tv.tv_sec) * 1000000 + (tv.tv_usec);
 
   pthread_cond_wait(&waitc, &waitm); // Wait for page message from server.
-  
+  gettimeofday(&tv, NULL);
+  end_us = (tv.tv_sec) * 1000000 + (tv.tv_usec);
+  printf("[%d] [WF %d] wait for page data took : %lfus\n", id, wfcnt, (end_us - start_us));
+  start_us = (tv.tv_sec) * 1000000 + (tv.tv_usec);
+ 
   pthread_mutex_unlock(&waitm); // Unlock, allow another handler to run.
 
-  gettimeofday(&tv, NULL);
-  double end_ms = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000;
-  printf("[%d] write fault took: %lfms\n", id, (end_ms - start_ms));
+  wfcnt++;
   return 0;
 }
 
@@ -117,23 +129,33 @@ int writehandler(void *pg) {
 int readhandler(void *pg) {
   struct timeval tv;
   gettimeofday(&tv, NULL);
-  double start_ms = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000;
+  double start_us = (tv.tv_sec) * 1000000 + (tv.tv_usec);
 
   pthread_mutex_lock(&waitm); // Need to lock to use our condition variable.
+  gettimeofday(&tv, NULL);
+  double end_us = (tv.tv_sec) * 1000000 + (tv.tv_usec);
+  printf("[%d] [RF %d] mutex acquire took: %lfms\n", id, rfcnt, (end_us - start_us));
+  start_us = (tv.tv_sec) * 1000000 + (tv.tv_usec);
 
   int pgnum = PGADDR_TO_PGNUM((uintptr_t) pg);
   if (requestpage(pgnum, "READ") != 0) {
     pthread_mutex_unlock(&waitm);
     return -1;
   }
+  gettimeofday(&tv, NULL);
+  end_us = (tv.tv_sec) * 1000000 + (tv.tv_usec);
+  printf("[%d] [RF %d] read request took: %lfms\n", id, rfcnt, (end_us - start_us));
+  start_us = (tv.tv_sec) * 1000000 + (tv.tv_usec);
 
   pthread_cond_wait(&waitc, &waitm); // Wait for page message from server.
+  gettimeofday(&tv, NULL);
+  end_us = (tv.tv_sec) * 1000000 + (tv.tv_usec);
+  printf("[%d] [RF %d] wait for response took: %lfms\n", id, rfcnt, (end_us - start_us));
+  start_us = (tv.tv_sec) * 1000000 + (tv.tv_usec);
 
   pthread_mutex_unlock(&waitm); // Unlock, allow another handler to run.
 
-  gettimeofday(&tv, NULL);
-  double end_ms = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000;
-  printf("[%d] read fault took: %lfms\n", id, (end_ms - start_ms));
+  rfcnt++;
   return 0;
 }
 
@@ -171,6 +193,9 @@ int addsharedregion(uintptr_t start, size_t len, int policy) {
 int initlibdsmu(char *ip, int port, uintptr_t starta, size_t len) {
   int i;
   struct sigaction sa;
+
+  rfcnt = 0;
+  wfcnt = 0;
 
   // Register page fault handler.
   sa.sa_sigaction = (void *)pgfaultsh;
