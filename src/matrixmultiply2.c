@@ -58,12 +58,14 @@ int main(int argc, char *argv[]) {
 
   double s = SIZE;
   double factor = s / n;
+  int counter = 0;
 
   for (i = 0; i < SIZE; i++) {
     if (i >= id * factor || i < (id - 1) * factor) {
       continue;
     }
 
+    counter++;
     //printf("Processor id %d doing row %d\n", id, i);
 
     for (j = 0; j < SIZE; j++) {
@@ -73,6 +75,8 @@ int main(int argc, char *argv[]) {
       }
     }
   }
+
+  printf("Processor id %d did %d rows\n", id, counter);
 
   gettimeofday(&tv, NULL);
   double end_ms = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000;
