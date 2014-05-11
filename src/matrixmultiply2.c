@@ -6,7 +6,7 @@
 #include "libdsmu.h"
 #include "mem.h"
 
-#define SIZE 1024
+#define SIZE 32
 #define SEED 69
 
 typedef int matrix_t [SIZE][SIZE];
@@ -59,9 +59,11 @@ int main(int argc, char *argv[]) {
   int factor = SIZE / n + 1;
 
   for (i = 0; i < SIZE; i++) {
-    if (((i / factor) != (id - 1))) {
+    if ((((i+1) / factor) != (id - 1))) {
       continue;
     }
+
+    //printf("Processor id %d doing row %d\n", id, i);
 
     for (j = 0; j < SIZE; j++) {
       for (k = 0; k < SIZE; k++) {
