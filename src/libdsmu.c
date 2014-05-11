@@ -134,7 +134,7 @@ int readhandler(void *pg) {
   pthread_mutex_lock(&waitm); // Need to lock to use our condition variable.
   gettimeofday(&tv, NULL);
   double end_us = (tv.tv_sec) * 1000000 + (tv.tv_usec);
-  printf("[%d] [RF %d] mutex acquire took: %lfms\n", id, rfcnt, (end_us - start_us));
+  printf("[%d] [RF %d] mutex acquire took: %lfus\n", id, rfcnt, (end_us - start_us));
   start_us = (tv.tv_sec) * 1000000 + (tv.tv_usec);
 
   int pgnum = PGADDR_TO_PGNUM((uintptr_t) pg);
@@ -144,13 +144,13 @@ int readhandler(void *pg) {
   }
   gettimeofday(&tv, NULL);
   end_us = (tv.tv_sec) * 1000000 + (tv.tv_usec);
-  printf("[%d] [RF %d] read request took: %lfms\n", id, rfcnt, (end_us - start_us));
+  printf("[%d] [RF %d] read request took: %lfus\n", id, rfcnt, (end_us - start_us));
   start_us = (tv.tv_sec) * 1000000 + (tv.tv_usec);
 
   pthread_cond_wait(&waitc, &waitm); // Wait for page message from server.
   gettimeofday(&tv, NULL);
   end_us = (tv.tv_sec) * 1000000 + (tv.tv_usec);
-  printf("[%d] [RF %d] wait for response took: %lfms\n", id, rfcnt, (end_us - start_us));
+  printf("[%d] [RF %d] wait for response took: %lfus\n", id, rfcnt, (end_us - start_us));
   start_us = (tv.tv_sec) * 1000000 + (tv.tv_usec);
 
   pthread_mutex_unlock(&waitm); // Unlock, allow another handler to run.
