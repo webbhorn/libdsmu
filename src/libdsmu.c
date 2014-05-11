@@ -100,7 +100,6 @@ int writehandler(void *pg) {
 
   gettimeofday(&tv, NULL);
   double end_us = (tv.tv_sec) * 1000000 + (tv.tv_usec);
-  printf("[%d] [WF %d] mutex acquire took : %lfus\n", id, wfcnt, (end_us - start_us));
   start_us = (tv.tv_sec) * 1000000 + (tv.tv_usec);
   
   if (requestpage(pgnum, "WRITE") != 0) {
@@ -110,7 +109,6 @@ int writehandler(void *pg) {
 
   gettimeofday(&tv, NULL);
   end_us = (tv.tv_sec) * 1000000 + (tv.tv_usec);
-  printf("[%d] [WF %d] request page msg send took : %lfus\n", id, wfcnt, (end_us - start_us));
   start_us = (tv.tv_sec) * 1000000 + (tv.tv_usec);
 
   pthread_cond_wait(&waitc[pgnum % MAX_SHARED_PAGES],
@@ -118,7 +116,6 @@ int writehandler(void *pg) {
   
   gettimeofday(&tv, NULL);
   end_us = (tv.tv_sec) * 1000000 + (tv.tv_usec);
-  printf("[%d] [WF %d] wait for page data took : %lfus\n", id, wfcnt, (end_us - start_us));
   start_us = (tv.tv_sec) * 1000000 + (tv.tv_usec);
      
   pthread_mutex_unlock(&waitm[pgnum % MAX_SHARED_PAGES]); // Unlock, allow another handler to run.
@@ -140,7 +137,6 @@ int readhandler(void *pg) {
 
   gettimeofday(&tv, NULL);
   double end_us = (tv.tv_sec) * 1000000 + (tv.tv_usec);
-  printf("[%d] [RF %d] mutex acquire took: %lfus\n", id, rfcnt, (end_us - start_us));
   start_us = (tv.tv_sec) * 1000000 + (tv.tv_usec);
 
   if (requestpage(pgnum, "READ") != 0) {
@@ -150,7 +146,6 @@ int readhandler(void *pg) {
 
   gettimeofday(&tv, NULL);
   end_us = (tv.tv_sec) * 1000000 + (tv.tv_usec);
-  printf("[%d] [RF %d] read request took: %lfus\n", id, rfcnt, (end_us - start_us));
   start_us = (tv.tv_sec) * 1000000 + (tv.tv_usec);
 
   pthread_cond_wait(&waitc[pgnum % MAX_SHARED_PAGES],
@@ -158,7 +153,6 @@ int readhandler(void *pg) {
 
   gettimeofday(&tv, NULL);
   end_us = (tv.tv_sec) * 1000000 + (tv.tv_usec);
-  printf("[%d] [RF %d] wait for response took: %lfus\n", id, rfcnt, (end_us - start_us));
   start_us = (tv.tv_sec) * 1000000 + (tv.tv_usec);
 
   pthread_mutex_unlock(&waitm[pgnum % MAX_SHARED_PAGES]); // Unlock, allow another handler to run.
