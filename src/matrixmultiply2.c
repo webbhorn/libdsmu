@@ -56,10 +56,11 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  int factor = SIZE / n + 1;
+  double s = SIZE;
+  double factor = s / n;
 
   for (i = 0; i < SIZE; i++) {
-    if ((((i+1) / factor) != (id - 1))) {
+    if (i >= id * factor || i < (id - 1) * factor) {
       continue;
     }
 
