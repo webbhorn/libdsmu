@@ -18,26 +18,32 @@ class Client:
   def listen(self):
     while True:
       data = self.socket.recv(7000)
-      print "[%s] %s" % (self.name, data)
       args = data.split(" ")
-      if args[0] == "INVALIDATE":
-        if len(args) > 2:
-          self.socket.sendall("INVALIDATE CONFIRMATION " + args[1] + " " + self.page)
+      if len(args) > 1 and args[1] == "INVALIDATE":
+        print "[%s] %s" % (self.name, data)
+        if len(args) > 3:
+          string = "INVALIDATE CONFIRMATION " + args[2] + " " + self.page
+          self.socket.sendall(str(len(string))+ " " + string)
         else:
-          self.socket.sendall("INVALIDATE CONFIRMATION " + args[1])
+          string = "INVALIDATE CONFIRMATION " + args[2] 
+          self.socket.sendall(str(len(string))+ " " + string)
 
 
   def request_page(self, permission, pagenum):
-    self.socket.sendall("REQUESTPAGE " + permission + " " + str(pagenum))
+    string = "REQUESTPAGE " + permission + " " + str(pagenum)
+    strr = str(len(string))+ " " + string
+    print strr
+    self.socket.sendall(strr)
 
 if __name__ == '__main__':
   c1 = Client("A")
   c2 = Client("B")
-  c3 = Client("C")
+  #c3 = Client("C")
 
+  print "reading page" 
   c1.request_page(READ, 1)
   c2.request_page(READ, 1)
-  c3.request_page(READ, 1)
+  #c3.request_page(READ, 1)
 
   time.sleep(.1)
 
