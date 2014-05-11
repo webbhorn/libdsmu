@@ -219,7 +219,6 @@ int invalidate(char *msg) {
   // If we don't need to reply with a b64-encoding of the page, just invalidate
   // and reply.
   if (strstr(msg, "PAGEDATA") == NULL) {
-    printf("invalidation does not need a b64-encoding of the page\n");
     if ((err = mprotect(pg, 1, PROT_NONE)) != 0) {
       fprintf(stderr, "Invalidation of page addr %p failed with error %d\n", pg, err);
       return -1;
