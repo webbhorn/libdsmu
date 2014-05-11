@@ -83,7 +83,6 @@ class ManagerServer:
 
 
   def ProcessMessage(self, client, data):
-    print "procesing "+ data
     args = data.split(" ")
 
     if args[0] == "REQUESTPAGE":
