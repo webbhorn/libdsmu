@@ -1,7 +1,7 @@
 libdsmu
 =======
 
-Distributed Shared Memory in Userspace Library for Linux Applications
+Distributed Shared Memory in Userspace Library for Linux Applications. Modeled after the [Ivy](http://css.csail.mit.edu/6.824/2014/papers/li-dsm.pdf) system. Final project for [6.824](http://css.csail.mit.edu/6.824/2014/).
 
 Authors
 -------
