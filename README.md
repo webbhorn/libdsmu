@@ -13,6 +13,9 @@ Authors
 
 Setup
 -----
+
+libdsmu was tested on Ubuntu 14.04 x86/64 running the 3.13.0-24-generic kernel. Older kernels on a non-x86/64 machine probably will not work because the code that detects fault types is non-portable.
+
 Third party libraries:
 
     $ sudo apt-get install libb64-dev
